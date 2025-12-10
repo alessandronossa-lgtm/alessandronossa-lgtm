@@ -1,59 +1,39 @@
-from flask import Flask, request, send_file, render_template
-from io import BytesIO
-from openpyxl import Workbook
-import re
+from fastapi import FastAPI, UploadFile, Form
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+import openpyxl
+import uuid
+import os
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+# Permite acesso do frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.route('/generate', methods=['POST'])
-def generate():
-    description = request.form.get('description', '').strip()
-    template = detect_template(description)
-    wb = create_workbook_from_template(template)
+@app.post("/gerar")
+async def gerar_planilha(descricao: str = Form(...)):
+    # Cria nome único
+    file_name = f"planilha_{uuid.uuid4().hex}.xlsx"
 
-    bio = BytesIO()
-    wb.save(bio)
-    bio.seek(0)
+    # Cria planilha simples baseada na descrição
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Planilha Gerada"
 
-    return send_file(
-        bio,
-        as_attachment=True,
-        download_name="prompt-sheet.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ws["A1"] = "Descrição da planilha"
+    ws["A2"] = descricao
+
+    wb.save(file_name)
+
+    return FileResponse(
+        file_name,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename="planilha_gerada.xlsx"
     )
 
-def detect_template(text):
-    t = text.lower()
-    if re.search(r"venda|vendas|comercial|cliente", t):
-        return "sales"
-    if re.search(r"estoque|produto|quantidade", t):
-        return "inventory"
-    if re.search(r"fluxo de caixa|caixa|receita|despesa", t):
-        return "cash"
-    return "generic"
-
-def create_workbook_from_template(template):
-    wb = Workbook()
-    ws = wb.active
-
-    if template == "sales":
-        ws.title = "Vendas"
-        ws.append(["Data", "Cliente", "Produto", "Qtd", "Preço Unit.", "Total"])
-    elif template == "inventory":
-        ws.title = "Estoque"
-        ws.append(["SKU", "Produto", "Categoria", "Quantidade", "Ponto de Reposição"])
-    elif template == "cash":
-        ws.title = "Fluxo de Caixa"
-        ws.append(["Data", "Descrição", "Entrada", "Saída", "Saldo"])
-    else:
-        ws.title = "Planilha"
-        ws.append(["Item", "Valor"])
-
-    return wb
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
