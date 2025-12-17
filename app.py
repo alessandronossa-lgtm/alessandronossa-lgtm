@@ -8,7 +8,7 @@ def home():
 
 @app.route("/generate", methods=["GET"])
 def generate():
-    return {
+    return jsonify({
         "status": "ok",
         "mensagem": "rota generate funcionando"
-    }
+    })
