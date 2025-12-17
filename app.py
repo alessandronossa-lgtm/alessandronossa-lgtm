@@ -6,12 +6,9 @@ app = Flask(__name__)
 def home():
     return "PromptSheet backend está vivo!"
 
-@app.route("/generate", methods=["POST"])
+@app.route("/generate", methods=["GET"])
 def generate():
-    data = request.json
-    descricao = data.get("descricao", "")
-
-    return jsonify({
+    return {
         "status": "ok",
-        "descricao_recebida": descricao
-    })
+        "mensagem": "rota generate funcionando"
+    }
