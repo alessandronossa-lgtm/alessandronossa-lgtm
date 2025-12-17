@@ -1,3 +1,4 @@
-flask
-openai
+Flask
+openpyxl
 gunicorn
+openai
