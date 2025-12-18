@@ -1,41 +1,34 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, send_file, jsonify
 from openai import OpenAI
+from openpyxl import Workbook
+from io import BytesIO
 
 app = Flask(__name__)
 
 # Cliente OpenAI usando variável de ambiente
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY")
-)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-@app.route("/", methods=["GET"])
+@app.route("/")
 def home():
-    return "PromptSheet backend está ativo!"
+    return "PromptSheet backend está ativo"
 
 @app.route("/generate", methods=["POST"])
 def generate():
     try:
         data = request.get_json()
+        descricao = data.get("descricao")
 
-        if not data or "descricao" not in data:
-            return jsonify({"erro": "Campo 'descricao' é obrigatório"}), 400
+        if not descricao:
+            return jsonify({"erro": "Descrição não informada"}), 400
 
-        descricao = data["descricao"]
-
+        # Prompt para gerar colunas da planilha
         prompt = f"""
-Você é um especialista em Excel.
-Com base na descrição abaixo, gere apenas uma lista de colunas
-para uma planilha, em formato JSON.
+        Gere uma lista de colunas para uma planilha Excel com base nesta descrição:
+        "{descricao}"
 
-Descrição:
-{descricao}
-
-Retorne apenas neste formato:
-{{
-  "colunas": ["Coluna 1", "Coluna 2", "Coluna 3"]
-}}
-"""
+        Retorne apenas os nomes das colunas, separados por vírgula.
+        """
 
         response = client.responses.create(
             model="gpt-5-mini",
@@ -43,15 +36,33 @@ Retorne apenas neste formato:
         )
 
         texto = response.output_text
+        colunas = [c.strip() for c in texto.split(",") if c.strip()]
 
-        return jsonify({
-            "descricao": descricao,
-            "resultado": texto
-        })
+        if not colunas:
+            return jsonify({"erro": "Não foi possível gerar colunas"}), 500
+
+        # Criar planilha Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Planilha"
+
+        ws.append(colunas)
+
+        # Salvar em memória
+        arquivo = BytesIO()
+        wb.save(arquivo)
+        arquivo.seek(0)
+
+        return send_file(
+            arquivo,
+            as_attachment=True,
+            download_name="planilha.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True)
