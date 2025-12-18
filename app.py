@@ -1,71 +1,69 @@
 import os
-import io
-from flask import Flask, request, send_file, jsonify
+import tempfile
+from flask import Flask, request, jsonify, send_file
 from openai import OpenAI
 from openpyxl import Workbook
 
 app = Flask(__name__)
 
-# Cliente OpenAI usando variável de ambiente
+# Inicializa cliente OpenAI usando variável de ambiente
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 @app.route("/", methods=["GET"])
-def home():
-    return {"status": "ok", "mensagem": "PromptSheet backend online"}
+def health():
+    return {"status": "ok", "message": "PromptSheet backend online"}
 
 
 @app.route("/generate", methods=["POST"])
-def generate():
+def generate_sheet():
+    data = request.get_json()
+
+    if not data or "descricao" not in data:
+        return jsonify({"error": "Campo 'descricao' é obrigatório"}), 400
+
+    descricao = data["descricao"]
+
+    # Prompt simples para gerar estrutura da planilha
+    prompt = f"""
+    Crie uma estrutura de planilha em formato de lista de colunas
+    para o seguinte objetivo:
+
+    {descricao}
+
+    Retorne apenas os nomes das colunas, uma por linha.
+    """
+
     try:
-        data = request.get_json()
-
-        if not data or "descricao" not in data:
-            return jsonify({"erro": "Campo 'descricao' é obrigatório"}), 400
-
-        descricao = data["descricao"]
-
-        # Prompt simples (MVP)
-        prompt = f"""
-Crie uma estrutura de planilha em formato de tabela para:
-{descricao}
-
-Retorne apenas os nomes das colunas, separados por vírgula.
-"""
-
         response = client.responses.create(
             model="gpt-5-mini",
             input=prompt
         )
 
         texto = response.output_text.strip()
+        colunas = [linha.strip() for linha in texto.split("\n") if linha.strip()]
 
-        colunas = [c.strip() for c in texto.split(",") if c.strip()]
-
-        if not colunas:
-            return jsonify({"erro": "IA não retornou colunas"}), 500
-
-        # Criar Excel
+        # Criar planilha Excel
         wb = Workbook()
         ws = wb.active
         ws.title = "Planilha"
 
-        ws.append(colunas)
+        for idx, coluna in enumerate(colunas, start=1):
+            ws.cell(row=1, column=idx, value=coluna)
 
-        # Salvar em memória
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
+        # Criar arquivo temporário
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        wb.save(temp_file.name)
 
         return send_file(
-            output,
+            temp_file.name,
             as_attachment=True,
-            download_name="planilha.xlsx",
+            download_name="planilha_gerada.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
     except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
