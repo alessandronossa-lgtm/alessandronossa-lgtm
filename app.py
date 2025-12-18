@@ -1,70 +1,66 @@
 import os
 import tempfile
-from flask import Flask, request, jsonify, send_file
-from openai import OpenAI
+from flask import Flask, request, jsonify, send_file, render_template
 from openpyxl import Workbook
+from openai import OpenAI
 
 app = Flask(__name__)
 
-# Inicializa cliente OpenAI usando variável de ambiente
+# Cliente OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# =========================
+# ROTA FRONTEND
+# =========================
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-@app.route("/", methods=["GET"])
-def health():
-    return {"status": "ok", "message": "PromptSheet backend online"}
-
-
+# =========================
+# ROTA BACKEND / IA + EXCEL
+# =========================
 @app.route("/generate", methods=["POST"])
-def generate_sheet():
+def generate():
     data = request.get_json()
 
     if not data or "descricao" not in data:
-        return jsonify({"error": "Campo 'descricao' é obrigatório"}), 400
+        return jsonify({"erro": "Descrição não enviada"}), 400
 
     descricao = data["descricao"]
 
-    # Prompt simples para gerar estrutura da planilha
-    prompt = f"""
-    Crie uma estrutura de planilha em formato de lista de colunas
-    para o seguinte objetivo:
+    # Chamada à OpenAI
+    response = client.responses.create(
+        model="gpt-5-mini",
+        input=f"""
+        Crie uma estrutura de planilha Excel para o seguinte pedido:
+        {descricao}
 
-    {descricao}
+        Retorne apenas os nomes das colunas, separados por vírgula.
+        """
+    )
 
-    Retorne apenas os nomes das colunas, uma por linha.
-    """
+    colunas_texto = response.output_text.strip()
+    colunas = [c.strip() for c in colunas_texto.split(",")]
 
-    try:
-        response = client.responses.create(
-            model="gpt-5-mini",
-            input=prompt
-        )
+    # Criar arquivo Excel temporário
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Planilha"
 
-        texto = response.output_text.strip()
-        colunas = [linha.strip() for linha in texto.split("\n") if linha.strip()]
+    ws.append(colunas)
 
-        # Criar planilha Excel
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Planilha"
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    wb.save(temp_file.name)
 
-        for idx, coluna in enumerate(colunas, start=1):
-            ws.cell(row=1, column=idx, value=coluna)
+    return send_file(
+        temp_file.name,
+        as_attachment=True,
+        download_name="planilha_promptsheet.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
-        # Criar arquivo temporário
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        wb.save(temp_file.name)
-
-        return send_file(
-            temp_file.name,
-            as_attachment=True,
-            download_name="planilha_gerada.xlsx",
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
+# =========================
+# START
+# =========================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True)
