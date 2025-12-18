@@ -8,22 +8,44 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route("/")
 def home():
-    return "O back-end do PromptSheet está ativo!"
+    return "PromptSheet backend está ativo 🚀"
 
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.get_json()
 
-    descricao = data.get("descricao", "")
+    if not data or "descricao" not in data:
+        return jsonify({"erro": "Campo 'descricao' é obrigatório"}), 400
 
-    if not descricao:
-        return jsonify({"erro": "Descrição não informada"}), 400
+    descricao = data["descricao"]
 
-    resposta = client.responses.create(
+    prompt = f"""
+Você é um especialista em planilhas.
+Com base na descrição abaixo, gere uma estrutura de planilha em JSON.
+
+Descrição:
+{descricao}
+
+Responda APENAS em JSON no formato:
+{{
+  "planilha": {{
+    "nome": "Nome da planilha",
+    "colunas": [
+      "Coluna 1",
+      "Coluna 2",
+      "Coluna 3"
+    ]
+  }}
+}}
+"""
+
+    response = client.responses.create(
         model="gpt-5-mini",
-        input=f"Crie a estrutura de uma planilha Excel para: {descricao}"
+        input=prompt
     )
 
+    texto = response.output_text
+
     return jsonify({
-        "resultado": resposta.output_text
+        "resultado": texto
     })
