@@ -1,51 +1,62 @@
+from flask import Flask, request, jsonify
 import os
-import uuid
-from flask import Flask, request, jsonify, send_file
-from openpyxl import Workbook
+import openai
 
+# Cria o app Flask
 app = Flask(__name__)
+
+# Lê a chave da OpenAI da variável de ambiente
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "ok", "mensagem": "PromptSheet backend ativo"})
+    return "PromptSheet backend online 🚀", 200
+
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    if not data or "descricao" not in data:
-        return jsonify({"erro": "Campo 'descricao' é obrigatório"}), 400
+        if not data or "descricao" not in data:
+            return jsonify({
+                "status": "erro",
+                "mensagem": "Campo 'descricao' é obrigatório"
+            }), 400
 
-    descricao = data["descricao"]
+        descricao = data["descricao"]
 
-    # Criar arquivo Excel
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Planilha"
+        # Chamada simples à OpenAI
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Você é um assistente especialista em criar estruturas de planilhas em Excel."
+                },
+                {
+                    "role": "user",
+                    "content": f"Crie a estrutura de uma planilha de Excel para: {descricao}"
+                }
+            ],
+            temperature=0.3
+        )
 
-    ws["A1"] = "Descrição da planilha"
-    ws["A2"] = descricao
+        texto_gerado = response.choices[0].message.content
 
-    ws["A4"] = "Exemplo de dados"
-    ws["A5"] = "Item"
-    ws["B5"] = "Quantidade"
-    ws["C5"] = "Valor"
+        return jsonify({
+            "status": "ok",
+            "resultado": texto_gerado
+        })
 
-    ws.append(["Produto A", 10, 25])
-    ws.append(["Produto B", 5, 40])
+    except Exception as e:
+        return jsonify({
+            "status": "erro",
+            "mensagem": str(e)
+        }), 500
 
-    # Salvar arquivo temporário
-    filename = f"promptsheet_{uuid.uuid4().hex}.xlsx"
-    filepath = os.path.join("/tmp", filename)
-    wb.save(filepath)
 
-    # Retornar arquivo para download
-    return send_file(
-        filepath,
-        as_attachment=True,
-        download_name="planilha.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
+# Necessário para o Render + Gunicorn
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
