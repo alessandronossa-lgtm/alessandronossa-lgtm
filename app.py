@@ -1,51 +1,70 @@
+from flask import Flask, request, send_file, jsonify
+import openai
 import os
-from flask import Flask, request, jsonify
-from openai import OpenAI
+from io import BytesIO
+from openpyxl import Workbook
 
 app = Flask(__name__)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Usa a chave vinda das variáveis de ambiente do Render
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
 
 @app.route("/")
 def home():
-    return "PromptSheet backend está ativo 🚀"
+    return "PromptSheet backend está ativo!"
+
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    data = request.get_json()
+    try:
+        data = request.get_json()
+        descricao = data.get("descricao")
 
-    if not data or "descricao" not in data:
-        return jsonify({"erro": "Campo 'descricao' é obrigatório"}), 400
+        if not descricao:
+            return jsonify({"erro": "Descrição não informada"}), 400
 
-    descricao = data["descricao"]
+        # Prompt simples e controlado
+        prompt = f"""
+        Gere uma lista de colunas para uma planilha Excel baseada na seguinte descrição:
+        "{descricao}"
 
-    prompt = f"""
-Você é um especialista em planilhas.
-Com base na descrição abaixo, gere uma estrutura de planilha em JSON.
+        Responda apenas com os nomes das colunas, separados por vírgula.
+        """
 
-Descrição:
-{descricao}
+        response = openai.ChatCompletion.create(
+            model="gpt-5-mini",
+            messages=[
+                {"role": "system", "content": "Você é um assistente que cria estruturas de planilhas."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2
+        )
 
-Responda APENAS em JSON no formato:
-{{
-  "planilha": {{
-    "nome": "Nome da planilha",
-    "colunas": [
-      "Coluna 1",
-      "Coluna 2",
-      "Coluna 3"
-    ]
-  }}
-}}
-"""
+        colunas_texto = response.choices[0].message.content
+        colunas = [c.strip() for c in colunas_texto.split(",")]
 
-    response = client.responses.create(
-        model="gpt-5-mini",
-        input=prompt
-    )
+        # Criar Excel em memória
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Planilha"
 
-    texto = response.output_text
+        ws.append(colunas)
 
-    return jsonify({
-        "resultado": texto
-    })
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return send_file(
+            output,
+            download_name="promptsheet.xlsx",
+            as_attachment=True,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
