@@ -1,68 +1,67 @@
-from flask import Flask, request, jsonify, send_file
 import os
-import openai
-import openpyxl
+import io
+from flask import Flask, request, send_file, jsonify
+from openai import OpenAI
 from openpyxl import Workbook
-from tempfile import NamedTemporaryFile
 
 app = Flask(__name__)
 
-# Configura a chave da OpenAI via variável de ambiente
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Cliente OpenAI usando variável de ambiente
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({
-        "status": "ok",
-        "mensagem": "PromptSheet backend ativo 🚀"
-    })
+    return {"status": "ok", "mensagem": "PromptSheet backend online"}
 
 
 @app.route("/generate", methods=["POST"])
-def generate_sheet():
+def generate():
     try:
         data = request.get_json()
-        descricao = data.get("descricao")
 
-        if not descricao:
+        if not data or "descricao" not in data:
             return jsonify({"erro": "Campo 'descricao' é obrigatório"}), 400
 
-        # Prompt simples para MVP
+        descricao = data["descricao"]
+
+        # Prompt simples (MVP)
         prompt = f"""
-        Crie a estrutura de uma planilha em Excel para o seguinte objetivo:
-        {descricao}
+Crie uma estrutura de planilha em formato de tabela para:
+{descricao}
 
-        Retorne apenas os nomes das colunas, separados por vírgula.
-        """
+Retorne apenas os nomes das colunas, separados por vírgula.
+"""
 
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Você é um especialista em Excel."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3
+        response = client.responses.create(
+            model="gpt-5-mini",
+            input=prompt
         )
 
-        colunas_texto = response.choices[0].message.content
-        colunas = [c.strip() for c in colunas_texto.split(",")]
+        texto = response.output_text.strip()
 
-        # Cria o Excel
+        colunas = [c.strip() for c in texto.split(",") if c.strip()]
+
+        if not colunas:
+            return jsonify({"erro": "IA não retornou colunas"}), 500
+
+        # Criar Excel
         wb = Workbook()
         ws = wb.active
         ws.title = "Planilha"
 
-        for idx, coluna in enumerate(colunas, start=1):
-            ws.cell(row=1, column=idx, value=coluna)
+        ws.append(colunas)
 
-        temp_file = NamedTemporaryFile(delete=False, suffix=".xlsx")
-        wb.save(temp_file.name)
+        # Salvar em memória
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
 
         return send_file(
-            temp_file.name,
+            output,
             as_attachment=True,
-            download_name="planilha_promptsheet.xlsx"
+            download_name="planilha.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
     except Exception as e:
@@ -70,4 +69,4 @@ def generate_sheet():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)
