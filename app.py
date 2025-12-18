@@ -1,17 +1,13 @@
-from flask import Flask, request, jsonify, send_file
-from openai import OpenAI
-import openpyxl
 import os
 import uuid
+from flask import Flask, request, jsonify, send_file
+from openpyxl import Workbook
 
 app = Flask(__name__)
 
-# Cliente OpenAI usando variável de ambiente
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
-    return "PromptSheet backend está online 🚀"
+    return jsonify({"status": "ok", "mensagem": "PromptSheet backend ativo"})
 
 @app.route("/generate", methods=["POST"])
 def generate():
@@ -22,50 +18,30 @@ def generate():
 
     descricao = data["descricao"]
 
-    # Prompt para gerar estrutura da planilha
-    prompt = f"""
-Crie a estrutura de uma planilha Excel para: {descricao}
-
-Retorne:
-- Nome da planilha
-- Nome das colunas
-Sem explicações extras.
-"""
-
-    response = client.responses.create(
-        model="gpt-5-mini",
-        input=prompt
-    )
-
-    texto = response.output_text
-
-    # Criar Excel
-    wb = openpyxl.Workbook()
+    # Criar arquivo Excel
+    wb = Workbook()
     ws = wb.active
     ws.title = "Planilha"
 
-    linhas = texto.split("\n")
+    ws["A1"] = "Descrição da planilha"
+    ws["A2"] = descricao
 
-    colunas = []
-    for linha in linhas:
-        linha = linha.strip("-• ")
-        if linha:
-            colunas.append(linha)
+    ws["A4"] = "Exemplo de dados"
+    ws["A5"] = "Item"
+    ws["B5"] = "Quantidade"
+    ws["C5"] = "Valor"
 
-    # Se IA não retornar colunas, cria padrão
-    if not colunas:
-        colunas = ["Coluna 1", "Coluna 2", "Coluna 3"]
+    ws.append(["Produto A", 10, 25])
+    ws.append(["Produto B", 5, 40])
 
-    ws.append(colunas)
+    # Salvar arquivo temporário
+    filename = f"promptsheet_{uuid.uuid4().hex}.xlsx"
+    filepath = os.path.join("/tmp", filename)
+    wb.save(filepath)
 
-    # Nome do arquivo
-    nome_arquivo = f"planilha_{uuid.uuid4().hex}.xlsx"
-    caminho = f"/tmp/{nome_arquivo}"
-    wb.save(caminho)
-
-    # Retorna o arquivo para download
+    # Retornar arquivo para download
     return send_file(
-        caminho,
+        filepath,
         as_attachment=True,
         download_name="planilha.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
