@@ -1,62 +1,73 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import os
 import openai
+import openpyxl
+from openpyxl import Workbook
+from tempfile import NamedTemporaryFile
 
-# Cria o app Flask
 app = Flask(__name__)
 
-# Lê a chave da OpenAI da variável de ambiente
+# Configura a chave da OpenAI via variável de ambiente
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return "PromptSheet backend online 🚀", 200
+    return jsonify({
+        "status": "ok",
+        "mensagem": "PromptSheet backend ativo 🚀"
+    })
 
 
 @app.route("/generate", methods=["POST"])
-def generate():
+def generate_sheet():
     try:
         data = request.get_json()
+        descricao = data.get("descricao")
 
-        if not data or "descricao" not in data:
-            return jsonify({
-                "status": "erro",
-                "mensagem": "Campo 'descricao' é obrigatório"
-            }), 400
+        if not descricao:
+            return jsonify({"erro": "Campo 'descricao' é obrigatório"}), 400
 
-        descricao = data["descricao"]
+        # Prompt simples para MVP
+        prompt = f"""
+        Crie a estrutura de uma planilha em Excel para o seguinte objetivo:
+        {descricao}
 
-        # Chamada simples à OpenAI
+        Retorne apenas os nomes das colunas, separados por vírgula.
+        """
+
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
-                {
-                    "role": "system",
-                    "content": "Você é um assistente especialista em criar estruturas de planilhas em Excel."
-                },
-                {
-                    "role": "user",
-                    "content": f"Crie a estrutura de uma planilha de Excel para: {descricao}"
-                }
+                {"role": "system", "content": "Você é um especialista em Excel."},
+                {"role": "user", "content": prompt}
             ],
             temperature=0.3
         )
 
-        texto_gerado = response.choices[0].message.content
+        colunas_texto = response.choices[0].message.content
+        colunas = [c.strip() for c in colunas_texto.split(",")]
 
-        return jsonify({
-            "status": "ok",
-            "resultado": texto_gerado
-        })
+        # Cria o Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Planilha"
+
+        for idx, coluna in enumerate(colunas, start=1):
+            ws.cell(row=1, column=idx, value=coluna)
+
+        temp_file = NamedTemporaryFile(delete=False, suffix=".xlsx")
+        wb.save(temp_file.name)
+
+        return send_file(
+            temp_file.name,
+            as_attachment=True,
+            download_name="planilha_promptsheet.xlsx"
+        )
 
     except Exception as e:
-        return jsonify({
-            "status": "erro",
-            "mensagem": str(e)
-        }), 500
+        return jsonify({"erro": str(e)}), 500
 
 
-# Necessário para o Render + Gunicorn
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True)
