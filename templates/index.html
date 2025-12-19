@@ -2,79 +2,68 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>PromptSheet — Gere sua planilha em segundos</title>
-
+  <title>PromptSheet — Gere sua planilha automaticamente</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
     body {
       font-family: Arial, Helvetica, sans-serif;
-      background: #f6f9fc;
-      margin: 0;
-      padding: 0;
+      background: #f4f6f8;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       height: 100vh;
+      margin: 0;
     }
 
     .card {
-      background: #ffffff;
+      background: white;
       padding: 28px;
+      border-radius: 10px;
       width: 420px;
-      border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.08);
     }
 
     h1 {
+      margin-top: 0;
       font-size: 22px;
-      margin-bottom: 10px;
     }
 
     p {
-      font-size: 14px;
       color: #555;
-      margin-bottom: 16px;
+      font-size: 14px;
     }
 
     textarea {
       width: 100%;
-      height: 120px;
-      resize: none;
+      height: 110px;
       padding: 10px;
-      font-size: 14px;
-      border-radius: 8px;
+      margin-top: 10px;
+      border-radius: 6px;
       border: 1px solid #ccc;
-      margin-bottom: 16px;
+      resize: none;
+      font-size: 14px;
     }
 
     button {
-      background: #1f7a1f;
-      color: #fff;
-      border: none;
-      padding: 12px;
+      margin-top: 15px;
       width: 100%;
+      padding: 12px;
+      background: #1f7a3f;
+      color: white;
+      border: none;
+      border-radius: 6px;
       font-size: 15px;
-      border-radius: 8px;
       cursor: pointer;
     }
 
     button:hover {
-      background: #166316;
+      background: #166534;
     }
 
-    .footer {
-      margin-top: 14px;
-      font-size: 12px;
-      color: #777;
-      text-align: center;
-    }
-
-    .loading {
-      display: none;
-      text-align: center;
+    .status {
+      margin-top: 12px;
       font-size: 13px;
-      margin-top: 10px;
       color: #333;
     }
   </style>
@@ -83,34 +72,30 @@
 <body>
 
   <div class="card">
-    <h1>PromptSheet</h1>
+    <h1>📊 PromptSheet</h1>
     <p>
-      Descreva o que você precisa e gere uma planilha Excel pronta para uso.
+      Descreva o que você precisa e receba uma planilha pronta em Excel.
+      Ideal para vendas, estoque, controle financeiro e muito mais.
     </p>
 
-    <textarea id="descricao" placeholder="Ex: Controle de vendas com data, cliente, produto, quantidade e valor total"></textarea>
+    <textarea id="descricao" placeholder="Ex: Controle de vendas com data, cliente, produto, quantidade e total"></textarea>
 
     <button onclick="gerarPlanilha()">Gerar planilha (.xlsx)</button>
 
-    <div class="loading" id="loading">
-      Gerando sua planilha, aguarde...
-    </div>
-
-    <div class="footer">
-      Exemplos: vendas, estoque, fluxo de caixa, controle financeiro
-    </div>
+    <div class="status" id="status"></div>
   </div>
 
   <script>
     async function gerarPlanilha() {
       const descricao = document.getElementById("descricao").value.trim();
+      const status = document.getElementById("status");
 
       if (!descricao) {
-        alert("Por favor, descreva a planilha que você deseja.");
+        status.innerText = "⚠️ Descreva o que você precisa.";
         return;
       }
 
-      document.getElementById("loading").style.display = "block";
+      status.innerText = "⏳ Gerando sua planilha...";
 
       try {
         const response = await fetch("/generate", {
@@ -118,13 +103,11 @@
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            descricao: descricao
-          })
+          body: JSON.stringify({ descricao })
         });
 
         if (!response.ok) {
-          throw new Error("Erro ao gerar a planilha");
+          throw new Error("Erro ao gerar a planilha.");
         }
 
         const blob = await response.blob();
@@ -132,17 +115,15 @@
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "PromptSheet.xlsx";
+        a.download = "planilha.xlsx";
         document.body.appendChild(a);
         a.click();
         a.remove();
         window.URL.revokeObjectURL(url);
 
+        status.innerText = "✅ Planilha gerada com sucesso!";
       } catch (error) {
-        alert("Erro ao gerar a planilha. Tente novamente.");
-        console.error(error);
-      } finally {
-        document.getElementById("loading").style.display = "none";
+        status.innerText = "❌ Erro ao gerar a planilha.";
       }
     }
   </script>
