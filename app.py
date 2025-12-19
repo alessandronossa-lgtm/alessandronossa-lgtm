@@ -1,17 +1,13 @@
 import os
 import tempfile
 from flask import Flask, request, jsonify, send_file, render_template
-from openpyxl import Workbook
 from openai import OpenAI
+from openpyxl import Workbook
 
 app = Flask(__name__)
 
-# Cliente OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# =========================
-# ROTA FRONTEND
-# =========================
 @app.route("/")
 def index():
     return render_template("index.html")
