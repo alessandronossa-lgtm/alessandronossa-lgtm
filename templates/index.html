@@ -1,130 +1,61 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>PromptSheet — Gere sua planilha automaticamente</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f4f6f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    .card {
-      background: white;
-      padding: 28px;
-      border-radius: 10px;
-      width: 420px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-    }
-
-    h1 {
-      margin-top: 0;
-      font-size: 22px;
-    }
-
-    p {
-      color: #555;
-      font-size: 14px;
-    }
-
-    textarea {
-      width: 100%;
-      height: 110px;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      resize: none;
-      font-size: 14px;
-    }
-
-    button {
-      margin-top: 15px;
-      width: 100%;
-      padding: 12px;
-      background: #1f7a3f;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 15px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #166534;
-    }
-
-    .status {
-      margin-top: 12px;
-      font-size: 13px;
-      color: #333;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>PromptSheet</title>
 </head>
-
 <body>
 
-  <div class="card">
-    <h1>📊 PromptSheet</h1>
-    <p>
-      Descreva o que você precisa e receba uma planilha pronta em Excel.
-      Ideal para vendas, estoque, controle financeiro e muito mais.
-    </p>
+  <h1>PromptSheet</h1>
+  <p>Descreva a planilha que você precisa:</p>
 
-    <textarea id="descricao" placeholder="Ex: Controle de vendas com data, cliente, produto, quantidade e total"></textarea>
+  <textarea id="descricao" rows="6" cols="60"
+    placeholder="Ex: Controle de vendas mensal para loja de material de construção"></textarea>
 
-    <button onclick="gerarPlanilha()">Gerar planilha (.xlsx)</button>
+  <br><br>
 
-    <div class="status" id="status"></div>
-  </div>
+  <!-- BOTÃO DE PAGAMENTO -->
+  <a href="https://mpago.li/2UPf1zT" target="_blank">
+    <button>💳 Pagar R$ 29 e gerar planilha</button>
+  </a>
+
+  <br><br>
+
+  <!-- BOTÃO DE GERAR -->
+  <button onclick="gerar()">✅ Já paguei, gerar planilha</button>
+
+  <p id="status"></p>
 
   <script>
-    async function gerarPlanilha() {
-      const descricao = document.getElementById("descricao").value.trim();
-      const status = document.getElementById("status");
+    function gerar() {
+      const descricao = document.getElementById("descricao").value;
 
       if (!descricao) {
-        status.innerText = "⚠️ Descreva o que você precisa.";
+        alert("Por favor, descreva a planilha.");
         return;
       }
 
-      status.innerText = "⏳ Gerando sua planilha...";
+      document.getElementById("status").innerText = "Gerando planilha, aguarde...";
 
-      try {
-        const response = await fetch("/generate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ descricao })
-        });
-
-        if (!response.ok) {
-          throw new Error("Erro ao gerar a planilha.");
-        }
-
-        const blob = await response.blob();
-
+      fetch("/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ descricao: descricao })
+      })
+      .then(response => response.blob())
+      .then(blob => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "planilha.xlsx";
-        document.body.appendChild(a);
+        a.download = "planilha_promptsheet.xlsx";
         a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-
-        status.innerText = "✅ Planilha gerada com sucesso!";
-      } catch (error) {
-        status.innerText = "❌ Erro ao gerar a planilha.";
-      }
+        document.getElementById("status").innerText = "Download concluído!";
+      })
+      .catch(() => {
+        document.getElementById("status").innerText = "Erro ao gerar planilha.";
+      });
     }
   </script>
 
