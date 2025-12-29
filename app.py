@@ -1,88 +1,115 @@
 import os
 import tempfile
-from flask import Flask, request, send_file, render_template
+from flask import Flask, request, jsonify, send_file
 from openai import OpenAI
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill
-from openpyxl.chart import BarChart, LineChart, Reference
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 
 app = Flask(__name__)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/generate", methods=["POST"])
-def generate():
-    descricao = request.form.get("descricao")
-
-    # ===== 1. USAR IA PARA ENTENDER ESTRUTURA =====
-    prompt = f"""
-    A partir da descrição abaixo, retorne apenas uma lista de colunas para uma planilha Excel.
-    Não explique nada. Apenas as colunas separadas por vírgula.
-
-    Descrição:
-    {descricao}
+# =========================
+# Função: extrair colunas do texto do cliente
+# =========================
+def extract_columns_from_prompt(prompt: str):
+    """
+    A IA só extrai colunas explicitamente citadas pelo cliente.
+    Se o cliente não listar colunas, a IA escolhe o mínimo essencial (2–3),
+    coerente com o contexto (estoque, vendas, financeiro).
     """
 
-    resposta = client.responses.create(
+    system_prompt = """
+Você é um assistente especializado em Excel.
+
+REGRAS OBRIGATÓRIAS:
+1. Se o cliente listar colunas explicitamente, use SOMENTE essas colunas.
+2. NÃO crie colunas extras.
+3. Se o cliente NÃO listar colunas, escolha APENAS 2 ou 3 colunas essenciais,
+   coerentes com o contexto.
+4. Retorne APENAS uma lista simples, separada por ponto e vírgula.
+5. Não explique nada.
+"""
+
+    response = client.responses.create(
         model="gpt-5-mini",
-        input=prompt
+        input=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ]
     )
 
-    colunas = resposta.output_text.strip().split(",")
+    raw = response.output_text.strip()
+    columns = [c.strip() for c in raw.split(";") if c.strip()]
+    return columns
 
-    # ===== 2. CRIAR PLANILHA =====
+
+# =========================
+# Função: criar planilha formatada
+# =========================
+def create_excel(columns):
     wb = Workbook()
     ws = wb.active
     ws.title = "Planilha"
 
-    header_fill = PatternFill("solid", fgColor="E8F0FE")
+    # Estilos PromptSheet v1 (leve e moderno)
+    header_fill = PatternFill("solid", fgColor="E9F5EC")
     header_font = Font(bold=True)
+    header_align = Alignment(horizontal="center", vertical="center")
 
     # Cabeçalhos
-    for col_index, coluna in enumerate(colunas, start=1):
-        cell = ws.cell(row=1, column=col_index, value=coluna.strip())
+    for col_index, col_name in enumerate(columns, start=1):
+        cell = ws.cell(row=1, column=col_index, value=col_name)
         cell.fill = header_fill
         cell.font = header_font
-        ws.column_dimensions[cell.column_letter].width = max(18, len(coluna) + 4)
+        cell.alignment = header_align
 
-    # ===== 3. LINHA DE TOTAL (AUTOMÁTICA) =====
-    total_row = 20
-    ws.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
-
-    for col in range(2, len(colunas) + 1):
-        ws.cell(
-            row=total_row,
-            column=col,
-            value=f"=SUM({ws.cell(row=2, column=col).coordinate}:{ws.cell(row=total_row-1, column=col).coordinate})"
+    # Ajustar largura automática
+    for col_index, col_name in enumerate(columns, start=1):
+        ws.column_dimensions[get_column_letter(col_index)].width = max(
+            len(col_name) + 4, 18
         )
 
-    ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor="DFF0D8")
+    return wb
 
-    # ===== 4. GRÁFICO AUTOMÁTICO =====
-    chart = BarChart()
-    chart.title = "Resumo Visual"
-    chart.style = 10
-    chart.y_axis.title = "Valores"
-    chart.x_axis.title = colunas[0]
 
-    data = Reference(ws, min_col=2, min_row=1, max_col=len(colunas), max_row=total_row-1)
-    categories = Reference(ws, min_col=1, min_row=2, max_row=total_row-1)
+# =========================
+# ROTAS
+# =========================
+@app.route("/")
+def home():
+    return "PromptSheet — backend ativo"
 
-    chart.add_data(data, titles_from_data=True)
-    chart.set_categories(categories)
 
-    ws.add_chart(chart, f"{chr(65 + len(colunas) + 2)}2")
+@app.route("/generate", methods=["POST"])
+def generate():
+    data = request.get_json()
+    descricao = data.get("descricao", "").strip()
 
-    # ===== 5. SALVAR E ENVIAR =====
+    if not descricao:
+        return jsonify({"error": "Descrição não informada"}), 400
+
+    # 1. Extrair colunas conforme premissa acordada
+    columns = extract_columns_from_prompt(descricao)
+
+    if not columns:
+        return jsonify({"error": "Não foi possível identificar colunas"}), 400
+
+    # 2. Criar Excel
+    wb = create_excel(columns)
+
+    # 3. Salvar arquivo temporário
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
     wb.save(temp_file.name)
 
+    # 4. Enviar para download
     return send_file(
         temp_file.name,
         as_attachment=True,
         download_name="PromptSheet.xlsx"
     )
+
+
+if __name__ == "__main__":
+    app.run()
