@@ -1,4 +1,5 @@
 import os
+import json
 import tempfile
 from flask import Flask, request, jsonify, send_file
 from openai import OpenAI
@@ -10,7 +11,7 @@ app = Flask(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # =========================
-# 1. IA — Extrair colunas e tipos
+# 1. IA — Extrair colunas
 # =========================
 def extract_structure(prompt: str):
     system_prompt = """
@@ -20,10 +21,12 @@ REGRAS:
 1. Se o cliente listar colunas explicitamente, use SOMENTE essas colunas.
 2. Não crie colunas extras.
 3. Se o cliente for vago, escolha APENAS 2 ou 3 colunas essenciais.
-4. Para cada coluna, defina o tipo: texto, data, numero ou moeda.
-5. Retorne APENAS JSON no formato:
+4. Tipos permitidos: texto, data, numero, moeda.
+5. Responda SOMENTE com JSON válido.
+
+Formato esperado:
 [
-  {"nome": "Coluna", "tipo": "texto|data|numero|moeda"}
+  {"nome": "Coluna", "tipo": "texto"}
 ]
 """
 
@@ -35,7 +38,19 @@ REGRAS:
         ]
     )
 
-    return response.output_parsed
+    raw = response.output_text
+
+    try:
+        structure = json.loads(raw)
+        if not isinstance(structure, list):
+            raise ValueError
+        return structure
+    except Exception:
+        # fallback seguro
+        return [
+            {"nome": "Descrição", "tipo": "texto"},
+            {"nome": "Valor", "tipo": "moeda"}
+        ]
 
 
 # =========================
@@ -46,11 +61,10 @@ def create_excel(structure):
     ws = wb.active
     ws.title = "PromptSheet"
 
-    # Estilos
     header_fill = PatternFill("solid", fgColor="E9F5EC")
     header_font = Font(bold=True)
-    header_align = Alignment(horizontal="center", vertical="center")
-    thin_border = Border(
+    header_align = Alignment(horizontal="center")
+    border = Border(
         left=Side(style="thin"),
         right=Side(style="thin"),
         top=Side(style="thin"),
@@ -63,16 +77,16 @@ def create_excel(structure):
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = header_align
-        cell.border = thin_border
-        ws.column_dimensions[get_column_letter(col_idx)].width = max(len(col["nome"]) + 4, 18)
+        cell.border = border
+        ws.column_dimensions[get_column_letter(col_idx)].width = max(len(col["nome"]) + 6, 18)
 
     ws.freeze_panes = "A2"
 
-    # Criar 10 linhas vazias prontas
+    # Linhas prontas
     for row in range(2, 12):
         for col_idx, col in enumerate(structure, start=1):
             cell = ws.cell(row=row, column=col_idx)
-            cell.border = thin_border
+            cell.border = border
 
             if col["tipo"] == "data":
                 cell.number_format = "DD/MM/YYYY"
@@ -80,26 +94,6 @@ def create_excel(structure):
                 cell.number_format = '"R$" #,##0.00'
             elif col["tipo"] == "numero":
                 cell.number_format = '#,##0.00'
-
-    # Fórmula automática: Quantidade x Preço = Total
-    nomes = [c["nome"].lower() for c in structure]
-    if "quantidade" in nomes and "preço" in nomes:
-        q_col = nomes.index("quantidade") + 1
-        p_col = nomes.index("preço") + 1
-
-        # Criar coluna Total automaticamente
-        total_col = len(structure) + 1
-        ws.cell(row=1, column=total_col, value="Total").fill = header_fill
-        ws.cell(row=1, column=total_col).font = header_font
-        ws.cell(row=1, column=total_col).alignment = header_align
-        ws.column_dimensions[get_column_letter(total_col)].width = 20
-
-        for row in range(2, 12):
-            ws.cell(
-                row=row,
-                column=total_col,
-                value=f"={get_column_letter(q_col)}{row}*{get_column_letter(p_col)}{row}"
-            ).number_format = '"R$" #,##0.00'
 
     return wb
 
@@ -120,17 +114,19 @@ def generate():
         return jsonify({"error": "Descrição não informada"}), 400
 
     structure = extract_structure(descricao)
-
     wb = create_excel(structure)
 
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
     wb.save(temp.name)
+    temp.close()
 
     return send_file(
         temp.name,
         as_attachment=True,
-        download_name="PromptSheet.xlsx"
+        download_name="PromptSheet.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 if __name__ == "__main__":
     app.run()
