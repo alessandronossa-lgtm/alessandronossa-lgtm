@@ -1,132 +1,112 @@
 import os
-import json
 import tempfile
-from flask import Flask, request, jsonify, send_file
-from openai import OpenAI
+from flask import Flask, request, jsonify, send_file, render_template
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
+import re
 
 app = Flask(__name__)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# =========================
-# 1. IA — Extrair colunas
-# =========================
-def extract_structure(prompt: str):
-    system_prompt = """
-Você é um especialista em Excel.
+# -------------------------------
+# Funções auxiliares
+# -------------------------------
 
-REGRAS:
-1. Se o cliente listar colunas explicitamente, use SOMENTE essas colunas.
-2. Não crie colunas extras.
-3. Se o cliente for vago, escolha APENAS 2 ou 3 colunas essenciais.
-4. Tipos permitidos: texto, data, numero, moeda.
-5. Responda SOMENTE com JSON válido.
+def extrair_colunas(texto):
+    texto = texto.lower()
+    padrao = r"coluna[s]?:?\s*(.*)"
+    match = re.search(padrao, texto)
 
-Formato esperado:
-[
-  {"nome": "Coluna", "tipo": "texto"}
-]
-"""
+    if match:
+        partes = re.split(",| e ", match.group(1))
+        return [p.strip().title() for p in partes if p.strip()]
 
-    response = client.responses.create(
-        model="gpt-5-mini",
-        input=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-    raw = response.output_text
-
-    try:
-        structure = json.loads(raw)
-        if not isinstance(structure, list):
-            raise ValueError
-        return structure
-    except Exception:
-        # fallback seguro
-        return [
-            {"nome": "Descrição", "tipo": "texto"},
-            {"nome": "Valor", "tipo": "moeda"}
-        ]
+    # fallback mínimo
+    return ["Descrição", "Valor"]
 
 
-# =========================
-# 2. Criar Excel profissional
-# =========================
-def create_excel(structure):
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "PromptSheet"
-
-    header_fill = PatternFill("solid", fgColor="E9F5EC")
-    header_font = Font(bold=True)
-    header_align = Alignment(horizontal="center")
-    border = Border(
-        left=Side(style="thin"),
-        right=Side(style="thin"),
-        top=Side(style="thin"),
-        bottom=Side(style="thin")
-    )
-
-    # Cabeçalho
-    for col_idx, col in enumerate(structure, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=col["nome"])
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = header_align
-        cell.border = border
-        ws.column_dimensions[get_column_letter(col_idx)].width = max(len(col["nome"]) + 6, 18)
-
-    ws.freeze_panes = "A2"
-
-    # Linhas prontas
-    for row in range(2, 12):
-        for col_idx, col in enumerate(structure, start=1):
-            cell = ws.cell(row=row, column=col_idx)
-            cell.border = border
-
-            if col["tipo"] == "data":
-                cell.number_format = "DD/MM/YYYY"
-            elif col["tipo"] == "moeda":
-                cell.number_format = '"R$" #,##0.00'
-            elif col["tipo"] == "numero":
-                cell.number_format = '#,##0.00'
-
-    return wb
+def coluna_eh_numerica(nome):
+    palavras_chave = [
+        "quant", "valor", "preço", "preco", "total",
+        "saldo", "entrada", "saida", "saída"
+    ]
+    nome = nome.lower()
+    return any(p in nome for p in palavras_chave)
 
 
-# =========================
-# 3. Rotas
-# =========================
+def ajustar_largura(ws):
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            if cell.value:
+                max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max_len + 3
+
+
+# -------------------------------
+# Rotas
+# -------------------------------
+
 @app.route("/")
-def home():
-    return "PromptSheet backend ativo"
+def index():
+    return render_template("index.html")
+
 
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.get_json()
-    descricao = data.get("descricao", "").strip()
+    prompt = data.get("prompt", "").strip()
 
-    if not descricao:
-        return jsonify({"error": "Descrição não informada"}), 400
+    if not prompt:
+        return jsonify({"error": "Prompt vazio"}), 400
 
-    structure = extract_structure(descricao)
-    wb = create_excel(structure)
+    colunas = extrair_colunas(prompt)
 
-    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-    wb.save(temp.name)
-    temp.close()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "PromptSheet"
+
+    # Cabeçalho
+    for idx, col in enumerate(colunas, start=1):
+        cell = ws.cell(row=1, column=idx, value=col)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="EAEAEA")
+
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+
+    # Linha TOTAL (B1)
+    total_row = 2
+    ws.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
+
+    for idx, col in enumerate(colunas, start=1):
+        if coluna_eh_numerica(col):
+            letra = get_column_letter(idx)
+            formula = f"=SUM({letra}2:{letra}1048576)"
+            cell = ws.cell(row=total_row, column=idx, value=formula)
+            cell.font = Font(bold=True)
+
+    # Estilo linha TOTAL
+    fill_total = PatternFill("solid", fgColor="F2F2F2")
+    borda = Border(top=Side(style="medium"))
+
+    for col in range(1, len(colunas) + 1):
+        c = ws.cell(row=total_row, column=col)
+        c.fill = fill_total
+        c.border = borda
+
+    ajustar_largura(ws)
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    wb.save(tmp.name)
 
     return send_file(
-        temp.name,
+        tmp.name,
         as_attachment=True,
-        download_name="PromptSheet.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        download_name="planilha_promptsheet.xlsx"
     )
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
