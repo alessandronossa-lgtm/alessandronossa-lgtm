@@ -1,63 +1,139 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>PromptSheet</title>
+    <meta charset="UTF-8">
+    <title>PromptSheet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 80px auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 24px;
+            color: #217346; /* verde Excel */
+        }
+
+        p {
+            color: #444;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #217346;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #1b5e38;
+        }
+
+        .status {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #555;
+            display: none;
+        }
+    </style>
 </head>
+
 <body>
 
-  <h1>PromptSheet</h1>
-  <p>Descreva a planilha que você precisa:</p>
+<div class="container">
+    <h1>PromptSheet</h1>
+    <p>Descreva a planilha que você precisa e receba um Excel profissional pronto para uso.</p>
 
-  <textarea id="descricao" rows="6" cols="60"
-    placeholder="Ex: Controle de vendas mensal para loja de material de construção"></textarea>
+    <textarea
+        id="descricao"
+        placeholder="Ex: Planilha de vendas com data, produto, quantidade e preço"
+    ></textarea>
 
-  <br><br>
+    <button onclick="gerarPlanilha()">Gerar Planilha</button>
 
-  <!-- BOTÃO DE PAGAMENTO -->
-  <a href="https://mpago.li/2UPf1zT" target="_blank">
-    <button>💳 Pagar R$ 29 e gerar planilha</button>
-  </a>
+    <div class="status" id="status">Gerando planilha, aguarde...</div>
+</div>
 
-  <br><br>
+<script>
+async function gerarPlanilha() {
+    const descricao = document.getElementById("descricao").value.trim();
+    const status = document.getElementById("status");
 
-  <!-- BOTÃO DE GERAR -->
-  <button onclick="gerar()">✅ Já paguei, gerar planilha</button>
-
-  <p id="status"></p>
-
-  <script>
-    function gerar() {
-      const descricao = document.getElementById("descricao").value;
-
-      if (!descricao) {
+    if (!descricao) {
         alert("Por favor, descreva a planilha.");
         return;
-      }
+    }
 
-      document.getElementById("status").innerText = "Gerando planilha, aguarde...";
+    status.style.display = "block";
+    status.innerText = "Gerando planilha, aguarde...";
 
-      fetch("/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ descricao: descricao })
-      })
-      .then(response => response.blob())
-      .then(blob => {
+    try {
+        const response = await fetch("/generate", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                prompt: descricao
+            })
+        });
+
+        if (!response.ok) {
+            status.style.display = "none";
+            alert("Erro ao gerar a planilha.");
+            return;
+        }
+
+        const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
+
         const a = document.createElement("a");
         a.href = url;
-        a.download = "planilha_promptsheet.xlsx";
+        a.download = "PromptSheet.xlsx";
+        document.body.appendChild(a);
         a.click();
-        document.getElementById("status").innerText = "Download concluído!";
-      })
-      .catch(() => {
-        document.getElementById("status").innerText = "Erro ao gerar planilha.";
-      });
+        a.remove();
+
+        window.URL.revokeObjectURL(url);
+        status.style.display = "none";
+
+    } catch (error) {
+        status.style.display = "none";
+        alert("Erro de conexão com o servidor.");
     }
-  </script>
+}
+</script>
 
 </body>
 </html>
