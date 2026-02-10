@@ -1,10 +1,10 @@
 import os
 import tempfile
+import re
 from flask import Flask, request, jsonify, send_file, render_template
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
-import re
 
 app = Flask(__name__)
 
@@ -14,6 +14,7 @@ app = Flask(__name__)
 
 def extrair_colunas(texto):
     texto = texto.lower()
+
     padrao = r"coluna[s]?:?\s*(.*)"
     match = re.search(padrao, texto)
 
@@ -21,7 +22,7 @@ def extrair_colunas(texto):
         partes = re.split(",| e ", match.group(1))
         return [p.strip().title() for p in partes if p.strip()]
 
-    # fallback mínimo
+    # fallback mínimo e seguro
     return ["Descrição", "Valor"]
 
 
@@ -55,57 +56,66 @@ def index():
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    data = request.get_json()
-    prompt = data.get("prompt", "").strip()
+    try:
+        data = request.get_json(force=True)
+        prompt = data.get("prompt", "").strip()
 
-    if not prompt:
-        return jsonify({"error": "Prompt vazio"}), 400
+        if not prompt:
+            return jsonify({"error": "Prompt vazio"}), 400
 
-    colunas = extrair_colunas(prompt)
+        colunas = extrair_colunas(prompt)
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "PromptSheet"
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "PromptSheet"
 
-    # Cabeçalho
-    for idx, col in enumerate(colunas, start=1):
-        cell = ws.cell(row=1, column=idx, value=col)
-        cell.font = Font(bold=True)
-        cell.fill = PatternFill("solid", fgColor="EAEAEA")
-
-    ws.freeze_panes = "A2"
-    ws.auto_filter.ref = ws.dimensions
-
-    # Linha TOTAL (B1)
-    total_row = 2
-    ws.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
-
-    for idx, col in enumerate(colunas, start=1):
-        if coluna_eh_numerica(col):
-            letra = get_column_letter(idx)
-            formula = f"=SUM({letra}2:{letra}1048576)"
-            cell = ws.cell(row=total_row, column=idx, value=formula)
+        # Cabeçalho
+        for idx, col in enumerate(colunas, start=1):
+            cell = ws.cell(row=1, column=idx, value=col)
             cell.font = Font(bold=True)
+            cell.fill = PatternFill("solid", fgColor="EAEAEA")
 
-    # Estilo linha TOTAL
-    fill_total = PatternFill("solid", fgColor="F2F2F2")
-    borda = Border(top=Side(style="medium"))
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = ws.dimensions
 
-    for col in range(1, len(colunas) + 1):
-        c = ws.cell(row=total_row, column=col)
-        c.fill = fill_total
-        c.border = borda
+        # Linha TOTAL (Camada B1)
+        total_row = 2
+        ws.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
 
-    ajustar_largura(ws)
+        for idx, col in enumerate(colunas, start=1):
+            if coluna_eh_numerica(col):
+                letra = get_column_letter(idx)
+                ws.cell(
+                    row=total_row,
+                    column=idx,
+                    value=f"=SUM({letra}2:{letra}1048576)"
+                ).font = Font(bold=True)
 
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-    wb.save(tmp.name)
+        # Estilo linha TOTAL
+        fill_total = PatternFill("solid", fgColor="F2F2F2")
+        borda = Border(top=Side(style="medium"))
 
-    return send_file(
-        tmp.name,
-        as_attachment=True,
-        download_name="planilha_promptsheet.xlsx"
-    )
+        for col in range(1, len(colunas) + 1):
+            c = ws.cell(row=total_row, column=col)
+            c.fill = fill_total
+            c.border = borda
+
+        ajustar_largura(ws)
+
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        wb.save(tmp.name)
+        tmp.close()
+
+        return send_file(
+            tmp.name,
+            as_attachment=True,
+            download_name="PromptSheet.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        print("ERRO NO BACKEND:", e)
+        return jsonify({"error": "Erro ao gerar planilha"}), 500
 
 
 if __name__ == "__main__":
