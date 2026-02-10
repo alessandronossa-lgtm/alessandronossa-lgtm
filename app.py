@@ -1,6 +1,5 @@
-import os
-import tempfile
 import re
+from io import BytesIO
 from flask import Flask, request, jsonify, send_file, render_template
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
@@ -22,7 +21,6 @@ def extrair_colunas(texto):
         partes = re.split(",| e ", match.group(1))
         return [p.strip().title() for p in partes if p.strip()]
 
-    # fallback mínimo e seguro
     return ["Descrição", "Valor"]
 
 
@@ -78,7 +76,7 @@ def generate():
         ws.freeze_panes = "A2"
         ws.auto_filter.ref = ws.dimensions
 
-        # Linha TOTAL (Camada B1)
+        # Linha TOTAL (B1)
         total_row = 2
         ws.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
 
@@ -91,7 +89,6 @@ def generate():
                     value=f"=SUM({letra}2:{letra}1048576)"
                 ).font = Font(bold=True)
 
-        # Estilo linha TOTAL
         fill_total = PatternFill("solid", fgColor="F2F2F2")
         borda = Border(top=Side(style="medium"))
 
@@ -102,12 +99,13 @@ def generate():
 
         ajustar_largura(ws)
 
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        wb.save(tmp.name)
-        tmp.close()
+        # 🔒 Geração em memória (SEM arquivo temporário)
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
 
         return send_file(
-            tmp.name,
+            output,
             as_attachment=True,
             download_name="PromptSheet.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
