@@ -87,50 +87,30 @@
 
 <script>
 async function gerarPlanilha() {
+
     const descricao = document.getElementById("descricao").value.trim();
-    const status = document.getElementById("status");
 
     if (!descricao) {
-        alert("Por favor, descreva a planilha.");
+        alert("Descreva a planilha.");
         return;
     }
 
-    status.style.display = "block";
-    status.innerText = "Gerando planilha, aguarde...";
+    const response = await fetch("/create-payment", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            prompt: descricao
+        })
+    });
 
-    try {
-        const response = await fetch("/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                prompt: descricao
-            })
-        });
+    const data = await response.json();
 
-        if (!response.ok) {
-            status.style.display = "none";
-            alert("Erro ao gerar a planilha.");
-            return;
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "PromptSheet.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-        window.URL.revokeObjectURL(url);
-        status.style.display = "none";
-
-    } catch (error) {
-        status.style.display = "none";
-        alert("Erro de conexão com o servidor.");
+    if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+    } else {
+        alert("Erro ao iniciar pagamento.");
     }
 }
 </script>
