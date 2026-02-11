@@ -1,19 +1,29 @@
 import re
+import uuid
+import requests
 from io import BytesIO
-from flask import Flask, request, jsonify, send_file, render_template
+from flask import Flask, request, jsonify, send_file, render_template, redirect
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
 app = Flask(__name__)
 
-# -------------------------------
-# Funções auxiliares
-# -------------------------------
+# ================================
+# CONFIGURAÇÃO MERCADO PAGO
+# ================================
+
+ACCESS_TOKEN = "https://mpago.li/2UPf1zT"
+
+BASE_URL = "https://api.mercadopago.com/checkout/preferences"
+
+
+# ================================
+# FUNÇÕES EXCEL
+# ================================
 
 def extrair_colunas(texto):
     texto = texto.lower()
-
     padrao = r"coluna[s]?:?\s*(.*)"
     match = re.search(padrao, texto)
 
@@ -33,6 +43,30 @@ def coluna_eh_numerica(nome):
     return any(p in nome for p in palavras_chave)
 
 
+def gerar_excel(prompt):
+
+    colunas = extrair_colunas(prompt)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "PromptSheet"
+
+    for idx, col in enumerate(colunas, start=1):
+        cell = ws.cell(row=1, column=idx, value=col)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="EAEAEA")
+
+    ws.freeze_panes = "A2"
+
+    ajustar_largura(ws)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return output
+
+
 def ajustar_largura(ws):
     for col in ws.columns:
         max_len = 0
@@ -43,82 +77,70 @@ def ajustar_largura(ws):
         ws.column_dimensions[col_letter].width = max_len + 3
 
 
-# -------------------------------
-# Rotas
-# -------------------------------
+# ================================
+# ROTAS
+# ================================
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-@app.route("/generate", methods=["POST"])
-def generate():
-    try:
-        data = request.get_json(silent=True)
+@app.route("/create-payment", methods=["POST"])
+def create_payment():
 
-        if not data or "prompt" not in data:
-            return jsonify({"error": "Prompt vazio"}), 400
+    data = request.get_json()
+    prompt = data.get("prompt")
 
-        prompt = data["prompt"].strip()
+    if not prompt:
+        return jsonify({"error": "Prompt vazio"}), 400
 
-        if not prompt:
-            return jsonify({"error": "Prompt vazio"}), 400
+    unique_id = str(uuid.uuid4())
 
-        colunas = extrair_colunas(prompt)
+    preference_data = {
+        "items": [
+            {
+                "title": "Planilha personalizada - PromptSheet",
+                "quantity": 1,
+                "unit_price": 4.90
+            }
+        ],
+        "back_urls": {
+            "success": f"https://promptsheet-backend.onrender.com/download?id={unique_id}&prompt={prompt}",
+            "failure": "https://promptsheet-backend.onrender.com",
+            "pending": "https://promptsheet-backend.onrender.com"
+        },
+        "auto_return": "approved"
+    }
 
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "PromptSheet"
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
-        # Cabeçalho
-        for idx, col in enumerate(colunas, start=1):
-            cell = ws.cell(row=1, column=idx, value=col)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill("solid", fgColor="EAEAEA")
+    response = requests.post(BASE_URL, json=preference_data, headers=headers)
 
-        ws.freeze_panes = "A2"
-        ws.auto_filter.ref = ws.dimensions
+    if response.status_code != 201:
+        return jsonify({"error": "Erro ao criar pagamento"}), 500
 
-        # Linha TOTAL (linha 2)
-        total_row = 2
-        ws.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
+    init_point = response.json()["init_point"]
 
-        for idx, col in enumerate(colunas, start=1):
-            if coluna_eh_numerica(col):
-                letra = get_column_letter(idx)
-                ws.cell(
-                    row=total_row,
-                    column=idx,
-                    value=f"=SUM({letra}3:{letra}1048576)"
-                ).font = Font(bold=True)
-
-        fill_total = PatternFill("solid", fgColor="F2F2F2")
-        borda = Border(top=Side(style="medium"))
-
-        for col in range(1, len(colunas) + 1):
-            c = ws.cell(row=total_row, column=col)
-            c.fill = fill_total
-            c.border = borda
-
-        ajustar_largura(ws)
-
-        output = BytesIO()
-        wb.save(output)
-        output.seek(0)
-
-        return send_file(
-            output,
-            as_attachment=True,
-            download_name="PromptSheet.xlsx",
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    except Exception as e:
-        print("ERRO NO BACKEND:", e)
-        return jsonify({"error": "Erro ao gerar planilha"}), 500
+    return jsonify({"checkout_url": init_point})
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+@app.route("/download")
+def download():
 
+    prompt = request.args.get("prompt")
+
+    if not prompt:
+        return "Pagamento inválido", 400
+
+    excel_file = gerar_excel(prompt)
+
+    return send_file(
+        excel_file,
+        as_attachment=True,
+        download_name="PromptSheet.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
