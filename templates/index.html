@@ -7,7 +7,7 @@
 
     <style>
         body {
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: Arial, sans-serif;
             background: #f5f7fa;
             margin: 0;
             padding: 0;
@@ -23,13 +23,7 @@
         }
 
         h1 {
-            margin-top: 0;
-            font-size: 24px;
-            color: #217346; /* verde Excel */
-        }
-
-        p {
-            color: #444;
+            color: #217346;
         }
 
         textarea {
@@ -39,7 +33,6 @@
             margin-top: 10px;
             border-radius: 6px;
             border: 1px solid #ccc;
-            font-size: 14px;
             resize: vertical;
         }
 
@@ -59,13 +52,6 @@
         button:hover {
             background-color: #1b5e38;
         }
-
-        .status {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #555;
-            display: none;
-        }
     </style>
 </head>
 
@@ -73,7 +59,7 @@
 
 <div class="container">
     <h1>PromptSheet</h1>
-    <p>Descreva a planilha que você precisa e receba um Excel profissional pronto para uso.</p>
+    <p>Gere sua planilha profissional por apenas R$ 4,90</p>
 
     <textarea
         id="descricao"
@@ -81,8 +67,6 @@
     ></textarea>
 
     <button onclick="gerarPlanilha()">Gerar Planilha</button>
-
-    <div class="status" id="status">Gerando planilha, aguarde...</div>
 </div>
 
 <script>
@@ -100,9 +84,7 @@ async function gerarPlanilha() {
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            prompt: descricao
-        })
+        body: JSON.stringify({ prompt: descricao })
     });
 
     const data = await response.json();
