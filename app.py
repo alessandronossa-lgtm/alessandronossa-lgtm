@@ -55,8 +55,12 @@ def index():
 @app.route("/generate", methods=["POST"])
 def generate():
     try:
-        data = request.get_json(force=True)
-        prompt = data.get("prompt", "").strip()
+        data = request.get_json(silent=True)
+
+        if not data or "prompt" not in data:
+            return jsonify({"error": "Prompt vazio"}), 400
+
+        prompt = data["prompt"].strip()
 
         if not prompt:
             return jsonify({"error": "Prompt vazio"}), 400
@@ -76,7 +80,7 @@ def generate():
         ws.freeze_panes = "A2"
         ws.auto_filter.ref = ws.dimensions
 
-        # Linha TOTAL (B1)
+        # Linha TOTAL (linha 2)
         total_row = 2
         ws.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
 
@@ -86,7 +90,7 @@ def generate():
                 ws.cell(
                     row=total_row,
                     column=idx,
-                    value=f"=SUM({letra}2:{letra}1048576)"
+                    value=f"=SUM({letra}3:{letra}1048576)"
                 ).font = Font(bold=True)
 
         fill_total = PatternFill("solid", fgColor="F2F2F2")
@@ -99,7 +103,6 @@ def generate():
 
         ajustar_largura(ws)
 
-        # 🔒 Geração em memória (SEM arquivo temporário)
         output = BytesIO()
         wb.save(output)
         output.seek(0)
