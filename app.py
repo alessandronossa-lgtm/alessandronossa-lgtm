@@ -2,25 +2,23 @@ import re
 import uuid
 import requests
 from io import BytesIO
-from flask import Flask, request, jsonify, send_file, render_template, redirect
+from flask import Flask, request, jsonify, send_file, render_template
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Border, Side
+from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 app = Flask(__name__)
 
-# ================================
-# CONFIGURAÇÃO MERCADO PAGO
-# ================================
+# ==========================
+# CONFIG MERCADO PAGO
+# ==========================
 
 ACCESS_TOKEN = "https://mpago.li/2UPf1zT"
+MP_URL = "https://api.mercadopago.com/checkout/preferences"
 
-BASE_URL = "https://api.mercadopago.com/checkout/preferences"
-
-
-# ================================
+# ==========================
 # FUNÇÕES EXCEL
-# ================================
+# ==========================
 
 def extrair_colunas(texto):
     texto = texto.lower()
@@ -34,13 +32,14 @@ def extrair_colunas(texto):
     return ["Descrição", "Valor"]
 
 
-def coluna_eh_numerica(nome):
-    palavras_chave = [
-        "quant", "valor", "preço", "preco", "total",
-        "saldo", "entrada", "saida", "saída"
-    ]
-    nome = nome.lower()
-    return any(p in nome for p in palavras_chave)
+def ajustar_largura(ws):
+    for col in ws.columns:
+        max_len = 0
+        letra = get_column_letter(col[0].column)
+        for cell in col:
+            if cell.value:
+                max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[letra].width = max_len + 3
 
 
 def gerar_excel(prompt):
@@ -67,19 +66,9 @@ def gerar_excel(prompt):
     return output
 
 
-def ajustar_largura(ws):
-    for col in ws.columns:
-        max_len = 0
-        col_letter = get_column_letter(col[0].column)
-        for cell in col:
-            if cell.value:
-                max_len = max(max_len, len(str(cell.value)))
-        ws.column_dimensions[col_letter].width = max_len + 3
-
-
-# ================================
+# ==========================
 # ROTAS
-# ================================
+# ==========================
 
 @app.route("/")
 def index():
@@ -90,57 +79,10 @@ def index():
 def create_payment():
 
     data = request.get_json()
-    prompt = data.get("prompt")
 
-    if not prompt:
+    if not data or "prompt" not in data:
         return jsonify({"error": "Prompt vazio"}), 400
 
-    unique_id = str(uuid.uuid4())
+    prompt = data["prompt"]
 
-    preference_data = {
-        "items": [
-            {
-                "title": "Planilha personalizada - PromptSheet",
-                "quantity": 1,
-                "unit_price": 4.90
-            }
-        ],
-        "back_urls": {
-            "success": f"https://promptsheet-backend.onrender.com/download?id={unique_id}&prompt={prompt}",
-            "failure": "https://promptsheet-backend.onrender.com",
-            "pending": "https://promptsheet-backend.onrender.com"
-        },
-        "auto_return": "approved"
-    }
-
-    headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    response = requests.post(BASE_URL, json=preference_data, headers=headers)
-
-    if response.status_code != 201:
-        return jsonify({"error": "Erro ao criar pagamento"}), 500
-
-    init_point = response.json()["init_point"]
-
-    return jsonify({"checkout_url": init_point})
-
-
-@app.route("/download")
-def download():
-
-    prompt = request.args.get("prompt")
-
-    if not prompt:
-        return "Pagamento inválido", 400
-
-    excel_file = gerar_excel(prompt)
-
-    return send_file(
-        excel_file,
-        as_attachment=True,
-        download_name="PromptSheet.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    base_url = request.host_url.rstrip(
