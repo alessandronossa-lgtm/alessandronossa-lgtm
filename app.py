@@ -52,4 +52,100 @@ def gerar_excel(prompt):
 
     wb = Workbook()
     ws = wb.active
-    ws.t
+    ws.title = "PromptSheet"
+
+    for idx, col in enumerate(colunas, start=1):
+        cell = ws.cell(row=1, column=idx, value=col)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="EAEAEA")
+
+    ws.freeze_panes = "A2"
+
+    ajustar_largura(ws)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return output
+
+
+# =====================================================
+# ROTAS
+# =====================================================
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/create-payment", methods=["POST"])
+def create_payment():
+
+    data = request.get_json()
+
+    if not data or "prompt" not in data:
+        return jsonify({"error": "Prompt vazio"}), 400
+
+    prompt = data["prompt"]
+    base_url = request.host_url.rstrip("/")
+
+    preference_data = {
+        "items": [
+            {
+                "title": "Planilha personalizada - PromptSheet",
+                "quantity": 1,
+                "unit_price": 4.90
+            }
+        ],
+        "back_urls": {
+            "success": f"{base_url}/download?prompt={prompt}",
+            "failure": base_url,
+            "pending": base_url
+        },
+        "auto_return": "approved"
+    }
+
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(MP_URL, json=preference_data, headers=headers)
+
+    if response.status_code != 201:
+        return jsonify({
+            "error": "Erro ao criar pagamento",
+            "detalhe": response.text
+        }), 500
+
+    checkout_url = response.json()["init_point"]
+
+    return jsonify({"checkout_url": checkout_url})
+
+
+@app.route("/download")
+def download():
+
+    prompt = request.args.get("prompt")
+
+    if not prompt:
+        return "Pagamento inválido", 400
+
+    excel_file = gerar_excel(prompt)
+
+    return send_file(
+        excel_file,
+        as_attachment=True,
+        download_name="PromptSheet.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
+# =====================================================
+# EXECUÇÃO RENDER
+# =====================================================
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
