@@ -10,9 +10,7 @@ app = Flask(__name__)
 # ======================================
 
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
-
-if not MP_ACCESS_TOKEN:
-    raise Exception("MP_ACCESS_TOKEN não configurado no Render")
+print("TOKEN:", MP_ACCESS_TOKEN)
 
 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
 
