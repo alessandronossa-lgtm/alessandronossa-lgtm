@@ -13,7 +13,7 @@ app = Flask(__name__)
 # CONFIGURAÇÃO MERCADO PAGO
 # =====================================================
 
-ACCESS_TOKEN = os.environ.get("APP_USR-4784462162520943-021511-a41c9719fd9c4b17891ed6edd2a6f5d0-226650550")
+ACCESS_TOKEN = os.environ.get("MERCADO_PAGO_ACCESS_TOKEN")
 
 if not ACCESS_TOKEN:
     raise ValueError("MERCADO_PAGO_ACCESS_TOKEN não configurado.")
