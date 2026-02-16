@@ -1,4 +1,4 @@
 flask
-gunicorn
+mercadopago
 openpyxl
-requests
+gunicorn
