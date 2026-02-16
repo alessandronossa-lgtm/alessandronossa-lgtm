@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, jsonify
+from flask import Flask, render_template, request, redirect, jsonify, send_file
 import mercadopago
 from openpyxl import Workbook
 
@@ -10,6 +10,10 @@ app = Flask(__name__)
 # ======================================
 
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
+
+if not MP_ACCESS_TOKEN:
+    raise Exception("MP_ACCESS_TOKEN não configurado no Render")
+
 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
 
 # ======================================
@@ -67,13 +71,12 @@ def gerar_planilha():
     caminho = "planilha_gerada.xlsx"
     wb.save(caminho)
 
-    return redirect("/download")
+    return send_file(caminho, as_attachment=True)
 
 
-@app.route("/download")
-def download():
-    return send_file("planilha_gerada.xlsx", as_attachment=True)
-
+# ======================================
+# RENDER - OBRIGATÓRIO
+# ======================================
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)
