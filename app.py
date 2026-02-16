@@ -52,24 +52,31 @@ def criar_preferencia():
 
 @app.route("/sucesso")
 def sucesso():
-    return render_template("sucesso.html")
+    payment_id = request.args.get("payment_id")
 
+    if not payment_id:
+        return "Pagamento não identificado."
 
-@app.route("/gerar_planilha", methods=["POST"])
-def gerar_planilha():
-    descricao = request.form.get("descricao")
+    try:
+        payment_response = sdk.payment().get(payment_id)
+        payment = payment_response["response"]
+    except Exception as e:
+        return f"Erro ao consultar pagamento: {str(e)}"
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Planilha Gerada"
+    status = payment.get("status")
 
-    ws["A1"] = "Descrição solicitada:"
-    ws["A2"] = descricao
+    if status == "approved":
+        return render_template("sucesso.html")
 
-    caminho = "planilha_gerada.xlsx"
-    wb.save(caminho)
+    elif status == "pending":
+        return """
+        <h2>Pagamento pendente</h2>
+        <p>Seu PIX ainda está sendo processado.</p>
+        <p>Aguarde alguns segundos e atualize esta página.</p>
+        """
 
-    return send_file(caminho, as_attachment=True)
+    else:
+        return f"<h2>Status do pagamento: {status}</h2>"
 
 
 # ======================================
