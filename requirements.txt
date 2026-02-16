@@ -1,4 +1,4 @@
-Flask
-openpyxl
+flask
 gunicorn
-openai
+openpyxl
+requests
