@@ -35,11 +35,11 @@ def criar_preferencia():
             }
         ],
         "back_urls": {
-            "success": "https://promptsheet-backend.onrender.com/sucesso",
-            "failure": "https://promptsheet-backend.onrender.com/",
-            "pending": "https://promptsheet-backend.onrender.com/"
-        },
-        "auto_return": "approved"
+    "success": "https://promptsheet-backend.onrender.com/sucesso",
+    "failure": "https://promptsheet-backend.onrender.com/",
+    "pending": "https://promptsheet-backend.onrender.com/sucesso"
+},
+"auto_return": "approved"
     }
 
     preference_response = sdk.preference().create(preference_data)
