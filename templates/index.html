@@ -1,76 +1,29 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>PromptSheet</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f7fa;
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 80px auto;
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        h1 {
-            color: #217346;
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 120px;
-            padding: 12px;
-            margin-top: 10px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            resize: vertical;
-        }
-
-        button {
-            margin-top: 20px;
-            width: 100%;
-            padding: 14px;
-            font-size: 16px;
-            font-weight: bold;
-            background-color: #217346;
-            color: #ffffff;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #1b5e38;
-        }
-    </style>
 </head>
-
 <body>
 
-<div class="container">
     <h1>PromptSheet</h1>
-    <p>Gere sua planilha profissional por apenas R$ 4,90</p>
+    <p>Clique abaixo para pagar R$ 1,00 e gerar sua planilha.</p>
 
-    <form action="/criar_pagamento" method="post">
-        <textarea
-            name="descricao"
-            placeholder="Ex: Planilha de vendas com data, produto, quantidade e preço"
-            required
-        ></textarea>
+    <button onclick="pagar()">Pagar R$ 1,00</button>
 
-        <button type="submit">Pagar R$ 4,90</button>
-    </form>
-</div>
+    <script>
+        function pagar() {
+            fetch("/criar_preferencia", {
+                method: "POST"
+            })
+            .then(response => response.json())
+            .then(data => {
+                window.location.href = data.init_point;
+            })
+            .catch(error => {
+                alert("Erro ao iniciar pagamento.");
+            });
+        }
+    </script>
 
 </body>
 </html>
