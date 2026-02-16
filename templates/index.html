@@ -61,41 +61,16 @@
     <h1>PromptSheet</h1>
     <p>Gere sua planilha profissional por apenas R$ 4,90</p>
 
-    <textarea
-        id="descricao"
-        placeholder="Ex: Planilha de vendas com data, produto, quantidade e preço"
-    ></textarea>
+    <form action="/criar_pagamento" method="post">
+        <textarea
+            name="descricao"
+            placeholder="Ex: Planilha de vendas com data, produto, quantidade e preço"
+            required
+        ></textarea>
 
-    <button onclick="gerarPlanilha()">Gerar Planilha</button>
+        <button type="submit">Pagar R$ 4,90</button>
+    </form>
 </div>
-
-<script>
-async function gerarPlanilha() {
-
-    const descricao = document.getElementById("descricao").value.trim();
-
-    if (!descricao) {
-        alert("Descreva a planilha.");
-        return;
-    }
-
-    const response = await fetch("/create-payment", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ prompt: descricao })
-    });
-
-    const data = await response.json();
-
-    if (data.checkout_url) {
-        window.location.href = data.checkout_url;
-    } else {
-        alert("Erro ao iniciar pagamento.");
-    }
-}
-</script>
 
 </body>
 </html>
