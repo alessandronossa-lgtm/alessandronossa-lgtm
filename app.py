@@ -38,7 +38,7 @@ def criar_preferencia():
         ],
        "back_urls": {
     "success": "https://promptsheet-backend.onrender.com/sucesso",
-    "failure": "https://promptsheet-backend.onrender.com/",
+    "failure": "https://promptsheet-backend.onrender.com/sucesso",
     "pending": "https://promptsheet-backend.onrender.com/sucesso"
 },
 "auto_return": "all"
