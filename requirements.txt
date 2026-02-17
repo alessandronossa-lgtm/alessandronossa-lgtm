@@ -3,3 +3,4 @@ mercadopago
 flask_sqlalchemy
 openpyxl
 gunicorn
+email-validator
