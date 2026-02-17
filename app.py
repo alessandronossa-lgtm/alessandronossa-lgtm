@@ -36,12 +36,12 @@ def criar_preferencia():
                 "unit_price": 1.00
             }
         ],
-        "back_urls": {
+       "back_urls": {
     "success": "https://promptsheet-backend.onrender.com/sucesso",
     "failure": "https://promptsheet-backend.onrender.com/",
     "pending": "https://promptsheet-backend.onrender.com/sucesso"
 },
-"auto_return": "approved"
+"auto_return": "all"
     }
 
     preference_response = sdk.preference().create(preference_data)
