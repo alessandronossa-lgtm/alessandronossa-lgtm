@@ -1,9 +1,11 @@
 import os
-from flask import Flask, render_template, request, redirect, jsonify, send_file
+from flask import Flask, render_template, request, redirect, jsonify, send_file, session, url_for
 import mercadopago
 from openpyxl import Workbook
 
 app = Flask(__name__)
+app.secret_key = "supersecretkey"
+
 
 # ======================================
 # CONFIGURAÇÃO MERCADO PAGO
