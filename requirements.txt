@@ -1,4 +1,4 @@
 flask
 mercadopago
+flask_sqlalchemy
 openpyxl
-gunicorn
