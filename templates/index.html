@@ -1,51 +1,154 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-    <title>PromptSheet</title>
+    <meta charset="UTF-8">
+    <title>PromptSheet Premium</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e1e2f, #2c2c54);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+        }
+
+        .card {
+            background: #ffffff;
+            color: #333;
+            padding: 40px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            background: #6c5ce7;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #5848c2;
+        }
+
+        .success {
+            margin-top: 20px;
+            padding: 15px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 8px;
+        }
+
+        .download-btn {
+            background: #00b894;
+            margin-top: 10px;
+        }
+
+        .download-btn:hover {
+            background: #019874;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
 </head>
+
 <body>
 
-    <h1>PromptSheet</h1>
-    <p>Digite seu email e pague R$ 1,00 para gerar sua planilha.</p>
+<div class="card">
 
-    <input type="email" id="email" placeholder="Seu email" required>
-    <br><br>
-    <button onclick="pagar()">Pagar R$ 1,00</button>
+    <h1>PromptSheet Premium</h1>
+    <p>Desbloqueie sua planilha inteligente por apenas <strong>R$ 1,00</strong></p>
 
-    <script>
-        function pagar() {
+    {% if usuario and usuario.pago %}
+        <div class="success">
+            Pagamento confirmado ✔
+            <br>
+            <a href="/download">
+                <button class="download-btn">Baixar Planilha</button>
+            </a>
+        </div>
+    {% else %}
+        <input type="email" id="email" placeholder="Digite seu email" required>
+        <button onclick="pagar()">Pagar R$ 1,00</button>
+    {% endif %}
 
-            const email = document.getElementById("email").value;
+    <div class="footer">
+        Pagamento seguro via Mercado Pago
+    </div>
 
-            if (!email) {
-                alert("Digite seu email.");
-                return;
-            }
+</div>
 
-            fetch("/criar_preferencia", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                body: "email=" + encodeURIComponent(email)
-            })
-            .then(response => response.json())
-            .then(data => {
+<script>
+function pagar() {
 
-                console.log(data);
+    const email = document.getElementById("email").value;
 
-                if (data.init_point) {
-                    window.location.href = data.init_point;
-                } else {
-                    alert("Erro ao gerar pagamento.");
-                }
-            })
-            .catch(error => {
-                console.error(error);
-                alert("Erro ao iniciar pagamento.");
-            });
+    if (!email) {
+        alert("Digite seu email.");
+        return;
+    }
+
+    fetch("/criar_preferencia", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "email=" + encodeURIComponent(email)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.init_point) {
+            window.location.href = data.init_point;
+        } else {
+            alert("Erro ao gerar pagamento.");
+            console.log(data);
         }
-    </script>
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Erro ao iniciar pagamento.");
+    });
+}
+</script>
 
 </body>
 </html>
