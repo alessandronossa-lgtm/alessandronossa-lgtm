@@ -52,14 +52,19 @@ def criar_preferencia():
 
 @app.route("/sucesso")
 def sucesso():
-    status = request.args.get("status")
+    try:
+        status = request.args.get("status")
 
-    # TEMPORÁRIO PARA TESTE
-    if status in ["approved", "pending"]:
-        session["pagamento_aprovado"] = True
-        return redirect(url_for("index"))
+        # Apenas para teste (aceita pending também)
+        if status in ["approved", "pending"]:
+            session["pagamento_aprovado"] = True
+            return redirect(url_for("index"))
 
-    return "Pagamento não aprovado."
+        return "Pagamento não aprovado."
+
+    except Exception as e:
+        return f"Erro na rota sucesso: {str(e)}"
+
 
 # ======================================
 # RENDER - OBRIGATÓRIO
