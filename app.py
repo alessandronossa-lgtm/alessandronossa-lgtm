@@ -56,32 +56,22 @@ def criar_preferencia():
 def sucesso():
     payment_id = request.args.get("payment_id")
 
-    print("=== ROTA SUCESSO CHAMADA ===")
-    print("Payment ID recebido:", payment_id)
-    print("Args completos:", request.args)
-
     if not payment_id:
-        return "Payment ID não recebido."
+        return redirect(url_for("index"))
 
     try:
         payment_response = sdk.payment().get(payment_id)
-        print("Resposta completa API:", payment_response)
-
         payment = payment_response["response"]
         status = payment.get("status")
 
-        print("Status real:", status)
-
         if status == "approved":
             session["pago"] = True
-            return "Pagamento APROVADO!"
+            return redirect(url_for("index"))
         else:
-            return f"Pagamento ainda não aprovado. Status atual: {status}"
+            return "Pagamento ainda não aprovado."
 
-    except Exception as e:
-        print("Erro na consulta:", str(e))
-        return f"Erro ao consultar pagamento: {str(e)}"
-
+    except:
+        return "Erro ao verificar pagamento."
 
 
 # ======================================
