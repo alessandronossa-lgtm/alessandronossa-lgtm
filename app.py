@@ -36,20 +36,17 @@ def criar_preferencia():
                 "unit_price": 1.00
             }
         ],
-       "back_urls": {
-    "success": "https://promptsheet-backend.onrender.com/sucesso",
-    "failure": "https://promptsheet-backend.onrender.com/sucesso",
-    "pending": "https://promptsheet-backend.onrender.com/sucesso"
-},
-"auto_return": "all"
+        "back_urls": {
+            "success": "https://promptsheet-backend.onrender.com/sucesso",
+            "failure": "https://promptsheet-backend.onrender.com/erro",
+            "pending": "https://promptsheet-backend.onrender.com/pendente"
+        },
+        "auto_return": "approved",
+        "notification_url": "https://promptsheet-backend.onrender.com/webhook"
     }
 
-    preference_response = sdk.preference().create(preference_data)
-    preference = preference_response["response"]
-
-    return jsonify({
-        "init_point": preference["init_point"]
-    })
+    preference = sdk.preference().create(preference_data)
+    return jsonify({"init_point": preference["response"]["init_point"]})
 
 
 @app.route("/sucesso")
