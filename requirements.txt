@@ -1,6 +1,6 @@
-flask
-mercadopago
-flask_sqlalchemy
-openpyxl
+Flask
 gunicorn
-email-validator
+mercadopago
+Flask-SQLAlchemy
+openpyxl
+psycopg2-binary
