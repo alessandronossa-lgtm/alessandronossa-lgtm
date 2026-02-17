@@ -56,6 +56,8 @@ def criar_preferencia():
 def sucesso():
     try:
         payment_id = request.args.get("payment_id")
+        print("Payment ID recebido:", payment_id)
+        print("Request args:", request.args)
 
         if not payment_id:
             return redirect(url_for("index"))
