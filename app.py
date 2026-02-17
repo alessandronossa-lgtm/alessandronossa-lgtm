@@ -12,7 +12,7 @@ app.secret_key = "supersecretkey"
 # ======================================
 
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
-print("TOKEN:", MP_ACCESS_TOKEN)
+
 
 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
 
