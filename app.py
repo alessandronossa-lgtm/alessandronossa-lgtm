@@ -55,17 +55,29 @@ def criar_preferencia():
 @app.route("/sucesso")
 def sucesso():
     try:
-        status = request.args.get("status")
+        payment_id = request.args.get("payment_id")
 
-        # Apenas para teste (aceita pending também)
-        if status in ["approved", "pending"]:
-            session["pagamento_aprovado"] = True
+        if not payment_id:
             return redirect(url_for("index"))
 
-        return "Pagamento não aprovado."
+        # Consulta pagamento na API
+        payment_response = sdk.payment().get(payment_id)
+        payment = payment_response["response"]
+
+        status = payment.get("status")
+
+        print("Status real do pagamento:", status)
+
+        if status == "approved":
+            session["pago"] = True
+            return redirect(url_for("index"))
+        else:
+            return "Pagamento ainda não aprovado. Aguarde a confirmação do PIX."
 
     except Exception as e:
-        return f"Erro na rota sucesso: {str(e)}"
+        print("Erro na rota sucesso:", e)
+        return "Erro ao verificar pagamento."
+
 
 
 # ======================================
