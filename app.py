@@ -189,7 +189,25 @@ def erro():
 
 @app.route("/pendente")
 def pendente():
-    return "Pagamento pendente."
+    email = request.args.get("external_reference")
+
+    if not email:
+        return "Pagamento pendente."
+
+    usuario = Usuario.query.filter_by(email=email).first()
+
+    if usuario and usuario.pago:
+        return redirect("/sucesso")
+
+    return """
+    <h2>Pagamento pendente...</h2>
+    <p>Aguardando confirmação do pagamento.</p>
+    <script>
+        setTimeout(function(){
+            window.location.reload();
+        }, 3000);
+    </script>
+    """
 
 # ======================================
 # RENDER
