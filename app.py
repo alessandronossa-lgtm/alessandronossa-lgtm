@@ -96,10 +96,11 @@ def criar_preferencia():
         ],
         "payer": {"email": email},
         "back_urls": {
-            "success": os.getenv("BASE_URL") + "/sucesso",
-            "failure": os.getenv("BASE_URL") + "/erro",
-            "pending": os.getenv("BASE_URL") + "/pendente"
-        },
+    "success": os.getenv("BASE_URL") + "/sucesso?email=" + email,
+    "failure": os.getenv("BASE_URL") + "/erro",
+    "pending": os.getenv("BASE_URL") + "/pendente?email=" + email
+},
+
         "auto_return": "approved",
         "notification_url": os.getenv("BASE_URL") + "/webhook",
         "external_reference": email
@@ -189,7 +190,7 @@ def erro():
 
 @app.route("/pendente")
 def pendente():
-    email = request.args.get("external_reference")
+    email = request.args.get("email")
 
     if not email:
         return "Pagamento pendente."
@@ -197,7 +198,7 @@ def pendente():
     usuario = Usuario.query.filter_by(email=email).first()
 
     if usuario and usuario.pago:
-        return redirect("/sucesso")
+        return redirect(url_for("sucesso"))
 
     return """
     <h2>Pagamento pendente...</h2>
@@ -208,6 +209,7 @@ def pendente():
         }, 3000);
     </script>
     """
+
 
 # ======================================
 # RENDER
