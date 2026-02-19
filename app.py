@@ -31,6 +31,9 @@ app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+with app.app_context():
+    db.create_all()
+
 
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
 if not MP_ACCESS_TOKEN:
