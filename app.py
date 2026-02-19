@@ -31,15 +31,28 @@ app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
-with app.app_context():
-    db.create_all()
-
 
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
 if not MP_ACCESS_TOKEN:
     raise Exception("MP_ACCESS_TOKEN não configurado.")
 
 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
+
+
+# ===== MODELO =====
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    senha_hash = db.Column(db.String(200), nullable=False)
+    pago = db.Column(db.Boolean, default=False)
+    payment_id = db.Column(db.String(200))
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# 👇 CREATE ALL DEPOIS DO MODEL
+with app.app_context():
+    db.create_all()
+
 
 # ======================================
 # MODELO
