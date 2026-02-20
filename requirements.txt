@@ -1,6 +1,7 @@
 Flask
 gunicorn
-mercadopago
-Flask-SQLAlchemy
-openpyxl
+flask_sqlalchemy
 psycopg2-binary
+mercadopago
+openpyxl
+werkzeug
