@@ -1,154 +1,262 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>PromptSheet Premium</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>PromptSheet Premium</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #1e1e2f, #2c2c54);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: white;
-        }
+  <style>
+    :root{
+      --bg1:#1e1e2f;
+      --bg2:#2c2c54;
+      --card:#ffffff;
+      --text:#333;
+      --muted:#666;
+      --brand:#6c5ce7;
+      --brand2:#5848c2;
+      --ok:#00b894;
+      --ok2:#019874;
+      --danger:#e17055;
+      --danger2:#c75c44;
+      --line:#ececec;
+    }
 
-        .card {
-            background: #ffffff;
-            color: #333;
-            padding: 40px;
-            border-radius: 16px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-            text-align: center;
-        }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:'Inter',sans-serif;
+      background:linear-gradient(135deg,var(--bg1),var(--bg2));
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      color:white;
+      padding:20px;
+    }
 
-        h1 {
-            margin-bottom: 10px;
-        }
+    .card{
+      background:var(--card);
+      color:var(--text);
+      padding:34px;
+      border-radius:16px;
+      width:100%;
+      max-width:520px;
+      box-shadow:0 15px 40px rgba(0,0,0,0.3);
+      text-align:left;
+    }
 
-        p {
-            color: #666;
-            margin-bottom: 25px;
-        }
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding-bottom:16px;
+      border-bottom:1px solid var(--line);
+      margin-bottom:18px;
+    }
 
-        input {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .brand h1{
+      margin:0;
+      font-size:20px;
+      line-height:1.1;
+    }
+    .brand small{
+      color:var(--muted);
+      font-size:12px;
+    }
 
-        button {
-            width: 100%;
-            padding: 14px;
-            border-radius: 8px;
-            border: none;
-            background: #6c5ce7;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.3s;
-        }
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
 
-        button:hover {
-            background: #5848c2;
-        }
+    a{ text-decoration:none; }
 
-        .success {
-            margin-top: 20px;
-            padding: 15px;
-            background: #d4edda;
-            color: #155724;
-            border-radius: 8px;
-        }
+    .btn{
+      border:none;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+      transition:.2s;
+      font-size:14px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
 
-        .download-btn {
-            background: #00b894;
-            margin-top: 10px;
-        }
+    .btn-primary{ background:var(--brand); color:white; }
+    .btn-primary:hover{ background:var(--brand2); }
 
-        .download-btn:hover {
-            background: #019874;
-        }
+    .btn-ghost{
+      background:transparent;
+      border:1px solid #ddd;
+      color:#333;
+    }
+    .btn-ghost:hover{ background:#f7f7f7; }
 
-        .footer {
-            margin-top: 20px;
-            font-size: 12px;
-            color: #aaa;
-        }
-    </style>
+    .btn-danger{ background:var(--danger); color:white; }
+    .btn-danger:hover{ background:var(--danger2); }
+
+    .btn-ok{ background:var(--ok); color:white; }
+    .btn-ok:hover{ background:var(--ok2); }
+
+    .hero{
+      margin-top:12px;
+      margin-bottom:16px;
+    }
+    .hero h2{
+      margin:0 0 8px 0;
+      font-size:22px;
+    }
+    .hero p{
+      margin:0;
+      color:var(--muted);
+      line-height:1.5;
+    }
+
+    .panel{
+      background:#f7f7ff;
+      border:1px solid #e7e7ff;
+      padding:16px;
+      border-radius:14px;
+      margin-top:16px;
+    }
+
+    .panel-title{
+      margin:0 0 8px 0;
+      font-weight:700;
+    }
+
+    .status{
+      padding:12px 14px;
+      border-radius:12px;
+      margin-top:10px;
+      font-size:14px;
+      line-height:1.4;
+    }
+    .status-ok{ background:#d4edda; color:#155724; }
+    .status-warn{ background:#fff3cd; color:#856404; }
+
+    .footer{
+      margin-top:18px;
+      font-size:12px;
+      color:#999;
+      text-align:center;
+    }
+  </style>
 </head>
 
 <body>
+  <div class="card">
 
-<div class="card">
+    <div class="topbar">
+      <div class="brand">
+        <h1>PromptSheet</h1>
+        <small>SaaS de planilhas inteligentes</small>
+      </div>
 
-    <h1>PromptSheet Premium</h1>
-    <p>Desbloqueie sua planilha inteligente por apenas <strong>R$ 1,00</strong></p>
+      <div class="actions">
+        {% if usuario %}
+          <a href="/logout"><button class="btn btn-danger">Sair</button></a>
+        {% else %}
+          <a href="/login"><button class="btn btn-ghost">Entrar</button></a>
+          <a href="/register"><button class="btn btn-primary">Criar conta</button></a>
+        {% endif %}
+      </div>
+    </div>
 
-    {% if usuario and usuario.pago %}
-        <div class="success">
-            Pagamento confirmado ✔
-            <br>
-            <a href="/download">
-                <button class="download-btn">Baixar Planilha</button>
-            </a>
-        </div>
+    <div class="hero">
+      <h2>Desbloqueie sua planilha premium</h2>
+      <p>
+        Acesso liberado após confirmação do pagamento via Mercado Pago.
+        <br>
+        Valor promocional: <strong>R$ 1,00</strong>.
+      </p>
+    </div>
+
+    {% if not usuario %}
+      <div class="panel">
+        <p class="panel-title">Para continuar</p>
+        <p style="margin:0;color:#555">
+          Faça login ou crie sua conta para pagar e liberar o download.
+        </p>
+      </div>
     {% else %}
-        <input type="email" id="email" placeholder="Digite seu email" required>
-        <button onclick="pagar()">Pagar R$ 1,00</button>
+
+      <div class="panel">
+        <p class="panel-title">Sua conta</p>
+        <p style="margin:0;color:#555">
+          Logado como: <strong>{{ usuario.email }}</strong>
+        </p>
+
+        {% if usuario.pago %}
+          <div class="status status-ok">
+            Pagamento confirmado ✔<br>
+            Seu download está liberado.
+          </div>
+
+          <a href="/download">
+            <button class="btn btn-ok" style="width:100%;margin-top:12px;padding:14px;border-radius:12px;">
+              Baixar Planilha
+            </button>
+          </a>
+
+        {% else %}
+          <div class="status status-warn">
+            Aguardando pagamento.<br>
+            Clique abaixo para pagar e liberar o download.
+          </div>
+
+          <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:14px;border-radius:12px;"
+                  onclick="pagar()">
+            Pagar R$ 1,00
+          </button>
+        {% endif %}
+      </div>
+
     {% endif %}
 
     <div class="footer">
-        Pagamento seguro via Mercado Pago
+      Pagamento seguro via Mercado Pago • PromptSheet
     </div>
 
-</div>
+  </div>
 
-<script>
-function pagar() {
+  <script>
+    async function pagar() {
+      try {
+        const resp = await fetch("/criar_preferencia", { method: "POST" });
+        const data = await resp.json();
 
-    const email = document.getElementById("email").value;
-
-    if (!email) {
-        alert("Digite seu email.");
-        return;
-    }
-
-    fetch("/criar_preferencia", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: "email=" + encodeURIComponent(email)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.init_point) {
-            window.location.href = data.init_point;
-        } else {
-            alert("Erro ao gerar pagamento.");
-            console.log(data);
+        if (!resp.ok) {
+          alert(data.erro || "Erro ao iniciar pagamento.");
+          return;
         }
-    })
-    .catch(error => {
-        console.error(error);
-        alert("Erro ao iniciar pagamento.");
-    });
-}
-</script>
+
+        if (data.init_point) {
+          window.location.href = data.init_point;
+          return;
+        }
+
+        alert("Erro ao gerar pagamento.");
+        console.log(data);
+
+      } catch (e) {
+        console.error(e);
+        alert("Erro de conexão com o servidor.");
+      }
+    }
+  </script>
 
 </body>
 </html>
