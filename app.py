@@ -72,8 +72,7 @@ class Usuario(db.Model):
     def verificar_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
 
-with app.app_context():
-    db.create_all()
+
 
 # ======================================
 # DECORATOR LOGIN
@@ -275,3 +274,8 @@ def pendente():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
+@app.before_request
+def criar_tabelas():
+    db.create_all()
+
