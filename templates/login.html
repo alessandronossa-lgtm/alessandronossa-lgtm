@@ -1,41 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Login - PromptSheet</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    body{margin:0;font-family:Inter,sans-serif;background:linear-gradient(135deg,#1e1e2f,#2c2c54);min-height:100vh;display:flex;align-items:center;justify-content:center}
-    .card{background:#fff;width:100%;max-width:420px;border-radius:16px;box-shadow:0 15px 40px rgba(0,0,0,.3);padding:34px}
-    h1{margin:0 0 8px 0;color:#222;font-size:26px}
-    p{margin:0 0 20px 0;color:#666}
-    input{width:100%;padding:12px;border-radius:10px;border:1px solid #ccc;margin:10px 0;font-size:14px}
-    button{width:100%;padding:14px;border-radius:10px;border:none;background:#6c5ce7;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
-    button:hover{background:#5848c2}
-    .msg{margin-top:12px;padding:10px;border-radius:10px;background:#ffecec;color:#a40000;font-size:13px}
-    .link{margin-top:14px;color:#666;font-size:13px;text-align:center}
-    a{color:#6c5ce7;text-decoration:none;font-weight:700}
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-  <div class="card">
-    <h1>Entrar</h1>
-    <p>Acesse sua conta para pagar e baixar a planilha.</p>
+  <h2>Entrar</h2>
 
-    <form method="POST">
-      <input type="email" name="email" placeholder="Seu email" required />
-      <input type="password" name="senha" placeholder="Sua senha" required />
-      <button type="submit">Entrar</button>
-    </form>
+  <form method="POST">
+    <input type="email" name="email" placeholder="Seu email" required><br><br>
+    <input type="password" name="senha" placeholder="Sua senha" required><br><br>
+    <button type="submit">Entrar</button>
+  </form>
 
-    {% if erro %}
-      <div class="msg">{{ erro }}</div>
-    {% endif %}
-
-    <div class="link">
-      Não tem conta? <a href="/register">Criar agora</a>
-    </div>
-  </div>
+  <p>Não tem conta? <a href="/register">Criar conta</a></p>
 </body>
 </html>
