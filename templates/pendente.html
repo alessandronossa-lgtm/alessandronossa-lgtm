@@ -1,37 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
   <title>Pagamento pendente</title>
-  <style>
-    body{margin:0;font-family:Inter,system-ui;background:#0f1020;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center}
-    .card{background:#fff;color:#222;padding:28px;border-radius:16px;width:100%;max-width:460px;text-align:center}
-    .muted{color:#666}
-    .loader{margin:18px auto 0;width:36px;height:36px;border-radius:50%;border:4px solid #ddd;border-top-color:#6c5ce7;animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-  </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Confirmando seu Pix…</h2>
-    <p class="muted">Assim que o pagamento for aprovado, vamos liberar automaticamente.</p>
-    <div class="loader"></div>
-  </div>
+  <h2>Pagamento pendente...</h2>
+  <p>Assim que confirmar, você será redirecionado automaticamente.</p>
 
-<script>
-async function checar() {
-  try {
-    const r = await fetch("/status", { cache: "no-store" });
-    const data = await r.json();
-    if (data.pago) {
-      window.location.href = "/sucesso";
-      return;
+  <script>
+    async function checar() {
+      try {
+        const r = await fetch("/status");
+        const j = await r.json();
+        if (j.paid) {
+          window.location.href = "/";
+          return;
+        }
+      } catch (e) {}
+      setTimeout(checar, 3000);
     }
-  } catch(e) {}
-  setTimeout(checar, 2000);
-}
-checar();
-</script>
+    checar();
+  </script>
 </body>
 </html>
