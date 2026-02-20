@@ -3,19 +3,19 @@ import tempfile
 from datetime import datetime
 from functools import wraps
 
+import mercadopago
 from flask import (
     Flask, render_template, request, redirect, jsonify,
     session, url_for, send_file
 )
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
 from openpyxl import Workbook
-import mercadopago
+from werkzeug.security import generate_password_hash, check_password_hash
 
-# ============================================================
-# CONFIG
-# ============================================================
 
+# =========================
+# APP / CONFIG
+# =========================
 app = Flask(__name__)
 
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -23,17 +23,18 @@ if not SECRET_KEY:
     raise Exception("SECRET_KEY não configurada.")
 app.secret_key = SECRET_KEY
 
+BASE_URL = os.getenv("BASE_URL", "https://promptsheet-backend.onrender.com").rstrip("/")
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise Exception("DATABASE_URL não configurada.")
 
-# Render/Postgres às vezes usa postgres:// (deprecated)
+# Ajuste Render Postgres antigo
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
 db = SQLAlchemy(app)
 
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
@@ -42,32 +43,25 @@ if not MP_ACCESS_TOKEN:
 
 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
 
-BASE_URL = os.getenv("BASE_URL", "https://promptsheet-backend.onrender.com").rstrip("/")
+# Mercado Pago: por padrão "approved"
+MP_AUTO_RETURN = os.getenv("MP_AUTO_RETURN", "approved")
 
 
-def external_url(endpoint: str, **kwargs) -> str:
-    """Gera URL absoluta para usar no Mercado Pago (back_urls/notification_url)."""
-    path = url_for(endpoint, _external=False, **kwargs)
-    return f"{BASE_URL}{path}"
-
-
-# ============================================================
+# =========================
 # MODEL
-# ============================================================
-
+# =========================
 class Usuario(db.Model):
     __tablename__ = "usuario"
 
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True, nullable=False)
 
-    # senha (login real)
+    # Login real
     senha_hash = db.Column(db.String(255), nullable=False)
 
-    # acesso/pagamento
+    # Pagamento
     pago = db.Column(db.Boolean, default=False)
     payment_id = db.Column(db.String(200))
-
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_senha(self, senha: str) -> None:
@@ -81,40 +75,37 @@ with app.app_context():
     db.create_all()
 
 
-# ============================================================
+# =========================
 # AUTH HELPERS
-# ============================================================
+# =========================
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        return fn(*args, **kwargs)
+    return wrapper
 
-def current_user():
+
+def get_usuario_logado():
     uid = session.get("user_id")
     if not uid:
         return None
     return Usuario.query.get(uid)
 
 
-def login_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if "user_id" not in session:
-            return redirect(url_for("login"))
-        return f(*args, **kwargs)
-    return decorated
-
-
-# ============================================================
-# ROUTES
-# ============================================================
-
+# =========================
+# HOME
+# =========================
 @app.route("/")
 def index():
-    usuario = current_user()
+    usuario = get_usuario_logado()
     return render_template("index.html", usuario=usuario)
 
 
-# ------------------------
+# =========================
 # REGISTER / LOGIN / LOGOUT
-# ------------------------
-
+# =========================
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -122,12 +113,12 @@ def register():
         senha = request.form.get("senha") or ""
 
         if not email or not senha:
-            return "Preencha email e senha."
+            return "Preencha e-mail e senha.", 400
 
         if Usuario.query.filter_by(email=email).first():
-            return "Usuário já existe. Faça login."
+            return "Este e-mail já está cadastrado. Faça login.", 400
 
-        usuario = Usuario(email=email, senha_hash="temp")
+        usuario = Usuario(email=email)
         usuario.set_senha(senha)
 
         db.session.add(usuario)
@@ -146,12 +137,11 @@ def login():
         senha = request.form.get("senha") or ""
 
         usuario = Usuario.query.filter_by(email=email).first()
-
         if usuario and usuario.verificar_senha(senha):
             session["user_id"] = usuario.id
             return redirect(url_for("index"))
 
-        return "Credenciais inválidas."
+        return "Credenciais inválidas.", 400
 
     return render_template("login.html")
 
@@ -162,24 +152,23 @@ def logout():
     return redirect(url_for("index"))
 
 
-# ------------------------
-# CRIAR PREFERÊNCIA (checkout)
-# ------------------------
-
+# =========================
+# MERCADO PAGO - CRIAR PREFERÊNCIA (EXIGE LOGIN)
+# =========================
 @app.route("/criar_preferencia", methods=["POST"])
 @login_required
 def criar_preferencia():
-    usuario = current_user()
+    usuario = get_usuario_logado()
     if not usuario:
-        return jsonify({"erro": "não autenticado"}), 401
+        return jsonify({"erro": "Não autenticado"}), 401
 
     if usuario.pago:
-        return jsonify({"erro": "Usuário já possui acesso."}), 400
+        return jsonify({"erro": "Sua conta já tem acesso liberado."}), 400
 
     preference_data = {
         "items": [
             {
-                "title": "Planilha Premium PromptSheet",
+                "title": "PromptSheet Premium",
                 "quantity": 1,
                 "currency_id": "BRL",
                 "unit_price": 1.00
@@ -187,83 +176,69 @@ def criar_preferencia():
         ],
         "payer": {"email": usuario.email},
 
-        # URLs de retorno (melhor para PIX deixar auto_return=all)
+        # PIX frequentemente volta como pending → manda para /pendente sempre
         "back_urls": {
-            "success": external_url("sucesso"),
-            "failure": external_url("erro_pagamento"),
-            "pending": external_url("pendente"),
+            "success": f"{BASE_URL}/pendente",
+            "failure": f"{BASE_URL}/erro",
+            "pending": f"{BASE_URL}/pendente"
         },
-        "auto_return": "all",
 
-        # Webhook definitivo
-        "notification_url": external_url("webhook"),
+        # Deixo configurável (padrão approved)
+        "auto_return": MP_AUTO_RETURN,
 
-        # Referência para achar o usuário depois no webhook
-        "external_reference": usuario.email,
+        # Webhook
+        "notification_url": f"{BASE_URL}/webhook",
+
+        # Referência do seu usuário
+        "external_reference": usuario.email
     }
 
-    response = sdk.preference().create(preference_data)
+    resp = sdk.preference().create(preference_data)
+    init_point = resp.get("response", {}).get("init_point")
 
-    init_point = response.get("response", {}).get("init_point")
     if not init_point:
-        return jsonify({"erro": "Falha ao criar preferência", "detalhe": response}), 500
+        return jsonify({"erro": "Falha ao gerar pagamento", "detalhes": resp}), 500
 
     return jsonify({"init_point": init_point})
 
 
-# ------------------------
-# WEBHOOK (Mercado Pago)
-# ------------------------
-
+# =========================
+# WEBHOOK - CONFIRMA PAGAMENTO
+# =========================
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    """
-    O Mercado Pago pode enviar:
-    - querystring: ?type=payment&data.id=...
-    - ou body json: {"type":"payment","data":{"id":...}}
-    """
     try:
-        data = request.get_json(silent=True) or {}
+        data = request.json or {}
 
-        # 1) tenta pelo body
-        event_type = data.get("type")
-        payment_id = None
-        if event_type == "payment":
+        # Alguns envios chegam como:
+        # /webhook?data.id=XXXX&type=payment
+        # Então pegamos também querystring
+        if data.get("type") != "payment":
+            # tenta querystring
+            q_type = request.args.get("type")
+            if q_type != "payment":
+                return jsonify({"status": "ignored"}), 200
+
+            payment_id = request.args.get("data.id")
+        else:
             payment_id = (data.get("data") or {}).get("id")
 
-        # 2) tenta pela querystring (v1/v2)
         if not payment_id:
-            q_type = request.args.get("type") or request.args.get("topic")
-            q_data_id = request.args.get("data.id") or request.args.get("id")
-            if q_type in ("payment", "payment.created", "payment.updated") and q_data_id:
-                payment_id = q_data_id
+            return jsonify({"status": "no payment id"}), 200
 
-        if not payment_id:
-            # outros eventos como merchant_order etc.
-            return jsonify({"status": "ignored"}), 200
-
-        # consulta o pagamento na API
         payment_response = sdk.payment().get(payment_id)
         payment = payment_response.get("response", {})
-        status = payment.get("status")
 
-        if status != "approved":
+        status = payment.get("status")
+        email = payment.get("external_reference")
+
+        if status != "approved" or not email:
             return jsonify({"status": "not approved"}), 200
 
-        email = payment.get("external_reference")
-        if not email:
-            # fallback: tenta pegar do payer
-            payer = payment.get("payer") or {}
-            email = payer.get("email")
-
-        if not email:
-            return jsonify({"status": "no email"}), 200
-
-        usuario = Usuario.query.filter_by(email=email.lower()).first()
+        usuario = Usuario.query.filter_by(email=email).first()
         if not usuario:
             return jsonify({"status": "user not found"}), 200
 
-        # marca como pago
         if not usuario.pago:
             usuario.pago = True
             usuario.payment_id = str(payment_id)
@@ -276,53 +251,40 @@ def webhook():
         return jsonify({"erro": "erro interno"}), 500
 
 
-# ------------------------
-# PÁGINAS DE RETORNO
-# ------------------------
-
-@app.route("/sucesso")
+# =========================
+# STATUS - PARA PÁGINA PENDENTE POLLAR
+# =========================
+@app.route("/status", methods=["GET"])
 @login_required
-def sucesso():
-    # Pode renderizar uma página bonita se quiser.
-    return redirect(url_for("index"))
+def status():
+    usuario = get_usuario_logado()
+    if not usuario:
+        return jsonify({"ok": False, "paid": False}), 401
+    return jsonify({"ok": True, "paid": bool(usuario.pago)}), 200
 
 
-@app.route("/erro")
-def erro_pagamento():
-    return "Pagamento falhou."
-
-
+# =========================
+# PENDENTE - MOSTRA TELA E FICA CONSULTANDO /status
+# =========================
 @app.route("/pendente")
 @login_required
 def pendente():
-    # Você já criou templates/pendente.html
-    return render_template("pendente.html")
+    usuario = get_usuario_logado()
+    return render_template("pendente.html", usuario=usuario)
 
 
-# ------------------------
-# STATUS (polling do pendente.html)
-# ------------------------
-
-@app.route("/status")
-@login_required
-def status():
-    usuario = current_user()
-    return jsonify({"pago": bool(usuario and usuario.pago)})
-
-
-# ------------------------
-# DOWNLOAD (protegido)
-# ------------------------
-
+# =========================
+# DOWNLOAD (PROTEGIDO)
+# =========================
 @app.route("/download")
 @login_required
 def download():
-    usuario = current_user()
+    usuario = get_usuario_logado()
     if not usuario:
         return redirect(url_for("login"))
 
     if not usuario.pago:
-        return "Acesso negado. Pagamento necessário."
+        return "Acesso negado. Pagamento necessário.", 403
 
     wb = Workbook()
     ws = wb.active
@@ -336,10 +298,17 @@ def download():
     return send_file(temp.name, as_attachment=True, download_name="promptsheet.xlsx")
 
 
-# ============================================================
-# RUN (local). No Render, quem sobe é o gunicorn.
-# ============================================================
+# =========================
+# AUXILIARES
+# =========================
+@app.route("/erro")
+def erro():
+    return "Pagamento falhou ou foi cancelado."
 
+
+# =========================
+# LOCAL
+# =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
