@@ -2,18 +2,95 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Cadastro - PromptSheet</title>
+  <title>Criar conta - PromptSheet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{
+      margin:0;
+      font-family:'Inter',sans-serif;
+      background:linear-gradient(135deg,#1e1e2f,#2c2c54);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      min-height:100vh;
+      padding:20px;
+      color:#fff;
+    }
+    .card{
+      background:#fff;
+      color:#333;
+      padding:40px;
+      border-radius:18px;
+      width:100%;
+      max-width:520px;
+      box-shadow:0 15px 40px rgba(0,0,0,.35);
+    }
+    h1{ margin:0 0 8px; text-align:center; }
+    .subtitle{ text-align:center; color:#666; margin-bottom:22px; }
+    label{ font-size:13px; color:#555; font-weight:600; display:block; margin:10px 0 6px; }
+    input{
+      width:100%;
+      padding:12px;
+      border-radius:10px;
+      border:1px solid #d7d7df;
+      font-size:14px;
+      outline:none;
+    }
+    input:focus{ border-color:#6c5ce7; box-shadow:0 0 0 3px rgba(108,92,231,.15); }
+    button{
+      width:100%;
+      padding:14px;
+      border-radius:10px;
+      border:none;
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+      transition:.2s;
+      margin-top:14px;
+    }
+    .btn-primary{ background:#6c5ce7; color:#fff; }
+    .btn-primary:hover{ background:#5848c2; }
+    .links{
+      margin-top:14px;
+      font-size:13px;
+      color:#666;
+      text-align:center;
+    }
+    .links a{ color:#6c5ce7; text-decoration:none; font-weight:700; }
+    .links a:hover{ text-decoration:underline; }
+    .footer{
+      margin-top:18px;
+      font-size:12px;
+      color:#aaa;
+      text-align:center;
+    }
+  </style>
 </head>
 <body>
-  <h2>Criar conta</h2>
 
-  <form method="POST">
-    <input type="email" name="email" placeholder="Seu email" required><br><br>
-    <input type="password" name="senha" placeholder="Crie uma senha" required><br><br>
-    <button type="submit">Cadastrar</button>
-  </form>
+  <div class="card">
+    <h1>Criar conta</h1>
+    <div class="subtitle">Crie seu acesso ao PromptSheet em segundos</div>
 
-  <p>Já tem conta? <a href="/login">Entrar</a></p>
+    <form method="POST">
+      <label for="email">Seu e-mail</label>
+      <input id="email" type="email" name="email" placeholder="ex: seuemail@gmail.com" required>
+
+      <label for="senha">Crie uma senha</label>
+      <input id="senha" type="password" name="senha" placeholder="mínimo recomendado: 8 caracteres" required>
+
+      <button class="btn-primary" type="submit">Cadastrar</button>
+    </form>
+
+    <div class="links">
+      Já tem conta? <a href="/login">Entrar</a>
+    </div>
+
+    <div class="footer">
+      PromptSheet • sua planilha inteligente
+    </div>
+  </div>
+
 </body>
 </html>
