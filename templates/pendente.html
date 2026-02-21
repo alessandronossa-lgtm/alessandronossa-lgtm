@@ -1,25 +1,252 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <title>Pagamento pendente</title>
+  <meta charset="UTF-8" />
+  <title>Pagamento pendente • PromptSheet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #1e1e2f, #2c2c54);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #111;
+      padding: 18px;
+    }
+
+    .card {
+      background: #ffffff;
+      width: 100%;
+      max-width: 520px;
+      border-radius: 18px;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.35);
+      padding: 34px;
+      text-align: left;
+    }
+
+    .brand {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .brand h1 {
+      font-size: 20px;
+      margin: 0;
+      font-weight: 700;
+      color: #111;
+    }
+
+    .brand small {
+      display: block;
+      margin-top: 2px;
+      font-size: 12px;
+      color: #666;
+      font-weight: 500;
+    }
+
+    h2 {
+      margin: 10px 0 8px;
+      font-size: 22px;
+      color: #111;
+    }
+
+    p {
+      margin: 0 0 18px;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    .status-box {
+      background: #f6f7fb;
+      border: 1px solid #e6e8f0;
+      border-radius: 12px;
+      padding: 14px 14px;
+      margin: 16px 0 18px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #6c5ce7;
+      box-shadow: 0 0 0 5px rgba(108, 92, 231, 0.12);
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    .status-title {
+      font-weight: 700;
+      color: #222;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .status-sub {
+      margin: 3px 0 0;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    button, a.btn {
+      border: none;
+      cursor: pointer;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-weight: 700;
+      font-size: 14px;
+      transition: 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: #6c5ce7;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #5848c2;
+    }
+
+    .btn-ghost {
+      background: #f1f2f7;
+      color: #333;
+    }
+
+    .btn-ghost:hover {
+      background: #e9ebf3;
+    }
+
+    .hint {
+      margin-top: 14px;
+      font-size: 12px;
+      color: #777;
+    }
+
+    .footer {
+      margin-top: 18px;
+      font-size: 12px;
+      color: #aaa;
+      text-align: center;
+    }
+
+    .ok {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 14px;
+      font-weight: 700;
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
-  <h2>Pagamento pendente...</h2>
-  <p>Assim que confirmar, você será redirecionado automaticamente.</p>
+  <div class="card">
+    <div class="brand">
+      <div>
+        <h1>PromptSheet</h1>
+        <small>SaaS de planilhas inteligentes</small>
+      </div>
+      <a class="btn btn-ghost" href="/">Voltar</a>
+    </div>
+
+    <h2>Pagamento pendente…</h2>
+    <p>
+      Se você pagou no PIX, a confirmação pode levar alguns instantes.
+      Assim que aprovar, vamos liberar automaticamente seu download.
+    </p>
+
+    <div class="status-box">
+      <div class="row">
+        <div class="dot"></div>
+        <div>
+          <p class="status-title" id="statusTitle">Aguardando confirmação</p>
+          <p class="status-sub" id="statusSub">Verificando a cada 3 segundos…</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="ok" id="okBox">✅ Pagamento confirmado! Redirecionando…</div>
+
+    <div class="actions">
+      <button class="btn-primary" onclick="checar(true)">Verificar agora</button>
+      <a class="btn btn-ghost" href="/">Ir para a página inicial</a>
+    </div>
+
+    <div class="hint">
+      Dica: se estiver preso na tela do Mercado Pago, clique em “Voltar ao site”.
+      Se não aparecer, volte manualmente para esta página.
+    </div>
+
+    <div class="footer">
+      Pagamento seguro via Mercado Pago • PromptSheet
+    </div>
+  </div>
 
   <script>
-    async function checar() {
+    let timer = null;
+
+    async function checar(force = false) {
       try {
-        const r = await fetch("/status");
+        const r = await fetch("/status", { cache: "no-store" });
         const j = await r.json();
-        if (j.paid) {
-          window.location.href = "/";
+
+        if (j && j.paid) {
+          document.getElementById("okBox").style.display = "block";
+          document.getElementById("statusTitle").textContent = "Pagamento confirmado";
+          document.getElementById("statusSub").textContent = "Redirecionando para o site…";
+          if (timer) clearTimeout(timer);
+          setTimeout(() => (window.location.href = "/"), 900);
           return;
         }
-      } catch (e) {}
-      setTimeout(checar, 3000);
+
+        if (force) {
+          document.getElementById("statusTitle").textContent = "Ainda não confirmou";
+          document.getElementById("statusSub").textContent = "Vamos continuar verificando…";
+        }
+      } catch (e) {
+        if (force) {
+          document.getElementById("statusTitle").textContent = "Falha ao verificar";
+          document.getElementById("statusSub").textContent = "Tente novamente em instantes.";
+        }
+      } finally {
+        timer = setTimeout(checar, 3000);
+      }
     }
+
     checar();
   </script>
 </body>
