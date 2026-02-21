@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Projeto • PromptSheet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{margin:0;font-family:Inter,system-ui;background:linear-gradient(135deg,#1e1e2f,#2c2c54);min-height:100vh;padding:22px;color:#fff}
+    .wrap{max-width:980px;margin:0 auto}
+    .top{display:flex;gap:12px;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+    .card{background:#fff;color:#333;border-radius:18px;padding:18px;box-shadow:0 15px 40px rgba(0,0,0,.25)}
+    input,textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #d7d7df;font-size:14px;outline:none}
+    textarea{min-height:140px;resize:vertical}
+    button{padding:12px 14px;border-radius:10px;border:none;font-weight:800;cursor:pointer}
+    .primary{background:#6c5ce7;color:#fff}
+    .success{background:#00b894;color:#fff}
+    .ghost{background:#f1f2f7;color:#333}
+    .warn{background:#fff3cd;color:#856404;padding:12px;border-radius:12px;border:1px solid #f1e0a7}
+    .ok{background:#d4edda;color:#155724;padding:12px;border-radius:12px;border:1px solid #c3e6cb}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <h2 style="margin:0;">{{ projeto.titulo }} <span style="font-size:12px;color:#ccc;">#{{ projeto.id }}</span></h2>
+      <div style="font-size:13px;color:#ddd;">Logado como {{ usuario.email }}</div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="/app" style="text-decoration:none;"><button class="ghost">← Meus projetos</button></a>
+      <a href="/logout" style="text-decoration:none;"><button class="ghost">Sair</button></a>
+    </div>
+  </div>
+
+  <div class="card">
+    {% if premium %}
+      <div class="ok">✅ Premium ativo — acesso liberado para todos os projetos.</div>
+    {% endif %}
+
+    {% if acesso %}
+      <div class="ok" style="margin-top:10px;">✅ Acesso liberado para este projeto.</div>
+      <div style="height:10px;"></div>
+      <a href="/projeto/{{ projeto.id }}/download" style="text-decoration:none;">
+        <button class="success">Baixar planilha</button>
+      </a>
+    {% else %}
+      <div class="warn">
+        🔒 Este projeto está bloqueado para download.
+        <div style="margin-top:6px;font-size:13px;">
+          Avulso 24h por projeto: <b>R$ {{ "%.2f"|format(price_one_time) }}</b> • Premium mensal: <b>R$ {{ "%.2f"|format(price_premium) }}</b>
+        </div>
+      </div>
+
+      <div style="height:12px;"></div>
+
+      <button class="primary" onclick="pagarAvulso()">Comprar acesso 24h (R$ {{ "%.2f"|format(price_one_time) }})</button>
+      <div style="height:10px;"></div>
+      <button class="ghost" onclick="assinarPremium()">Assinar Premium (R$ {{ "%.2f"|format(price_premium) }}/mês)</button>
+
+      <div style="margin-top:10px;font-size:12px;color:#777;">
+        *PIX pode demorar para aprovar. Após pagar, você vai para a tela “pendente” que libera automaticamente.
+      </div>
+    {% endif %}
+
+    <hr style="border:none;border-top:1px solid #eee;margin:18px 0;">
+
+    <h3 style="margin:0 0 10px;">Editar projeto</h3>
+    <form method="POST" action="/projeto/{{ projeto.id }}/editar">
+      <input name="titulo" value="{{ projeto.titulo }}" />
+      <div style="height:10px;"></div>
+      <textarea name="prompt">{{ projeto.prompt }}</textarea>
+      <div style="height:12px;"></div>
+      <button class="ghost" type="submit">Salvar alterações</button>
+    </form>
+  </div>
+</div>
+
+<script>
+async function pagarAvulso(){
+  const r = await fetch("/pagamento/avulso/{{ projeto.id }}", { method: "POST" });
+  const j = await r.json();
+  if(j.init_point){
+    window.location.href = j.init_point;
+    return;
+  }
+  if(j.redirect){
+    window.location.href = j.redirect;
+    return;
+  }
+  alert(j.erro || "Erro ao iniciar pagamento.");
+  console.log(j);
+}
+
+async function assinarPremium(){
+  const r = await fetch("/premium", { method: "POST" });
+  const j = await r.json();
+  alert(j.erro || "Premium ainda não ativado.");
+}
+</script>
+</body>
+</html>
