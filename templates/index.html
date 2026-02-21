@@ -1,262 +1,196 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>PromptSheet Premium</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>PromptSheet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-  <style>
-    :root{
-      --bg1:#1e1e2f;
-      --bg2:#2c2c54;
-      --card:#ffffff;
-      --text:#333;
-      --muted:#666;
-      --brand:#6c5ce7;
-      --brand2:#5848c2;
-      --ok:#00b894;
-      --ok2:#019874;
-      --danger:#e17055;
-      --danger2:#c75c44;
-      --line:#ececec;
-    }
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e1e2f, #2c2c54);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
 
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:'Inter',sans-serif;
-      background:linear-gradient(135deg,var(--bg1),var(--bg2));
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      color:white;
-      padding:20px;
-    }
+        .card {
+            background: #ffffff;
+            color: #333;
+            padding: 40px;
+            border-radius: 18px;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.35);
+            text-align: center;
+        }
 
-    .card{
-      background:var(--card);
-      color:var(--text);
-      padding:34px;
-      border-radius:16px;
-      width:100%;
-      max-width:520px;
-      box-shadow:0 15px 40px rgba(0,0,0,0.3);
-      text-align:left;
-    }
+        h1 {
+            margin-bottom: 8px;
+        }
 
-    .topbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      padding-bottom:16px;
-      border-bottom:1px solid var(--line);
-      margin-bottom:18px;
-    }
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+        }
 
-    .brand{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-    .brand h1{
-      margin:0;
-      font-size:20px;
-      line-height:1.1;
-    }
-    .brand small{
-      color:var(--muted);
-      font-size:12px;
-    }
+        .user-info {
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #555;
+        }
 
-    .actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
+        button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 10px;
+        }
 
-    a{ text-decoration:none; }
+        .btn-primary {
+            background: #6c5ce7;
+            color: white;
+        }
 
-    .btn{
-      border:none;
-      padding:10px 14px;
-      border-radius:10px;
-      font-weight:600;
-      cursor:pointer;
-      transition:.2s;
-      font-size:14px;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-    }
+        .btn-primary:hover {
+            background: #5848c2;
+        }
 
-    .btn-primary{ background:var(--brand); color:white; }
-    .btn-primary:hover{ background:var(--brand2); }
+        .btn-success {
+            background: #00b894;
+            color: white;
+        }
 
-    .btn-ghost{
-      background:transparent;
-      border:1px solid #ddd;
-      color:#333;
-    }
-    .btn-ghost:hover{ background:#f7f7f7; }
+        .btn-success:hover {
+            background: #019874;
+        }
 
-    .btn-danger{ background:var(--danger); color:white; }
-    .btn-danger:hover{ background:var(--danger2); }
+        .btn-ghost {
+            background: #f1f2f7;
+            color: #333;
+        }
 
-    .btn-ok{ background:var(--ok); color:white; }
-    .btn-ok:hover{ background:var(--ok2); }
+        .btn-ghost:hover {
+            background: #e9ebf3;
+        }
 
-    .hero{
-      margin-top:12px;
-      margin-bottom:16px;
-    }
-    .hero h2{
-      margin:0 0 8px 0;
-      font-size:22px;
-    }
-    .hero p{
-      margin:0;
-      color:var(--muted);
-      line-height:1.5;
-    }
+        .status-ok {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
 
-    .panel{
-      background:#f7f7ff;
-      border:1px solid #e7e7ff;
-      padding:16px;
-      border-radius:14px;
-      margin-top:16px;
-    }
+        .status-warn {
+            background: #fff3cd;
+            color: #856404;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
 
-    .panel-title{
-      margin:0 0 8px 0;
-      font-weight:700;
-    }
-
-    .status{
-      padding:12px 14px;
-      border-radius:12px;
-      margin-top:10px;
-      font-size:14px;
-      line-height:1.4;
-    }
-    .status-ok{ background:#d4edda; color:#155724; }
-    .status-warn{ background:#fff3cd; color:#856404; }
-
-    .footer{
-      margin-top:18px;
-      font-size:12px;
-      color:#999;
-      text-align:center;
-    }
-  </style>
+        .footer {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
 </head>
 
 <body>
-  <div class="card">
 
-    <div class="topbar">
-      <div class="brand">
-        <h1>PromptSheet</h1>
-        <small>SaaS de planilhas inteligentes</small>
-      </div>
+<div class="card">
 
-      <div class="actions">
-        {% if usuario %}
-          <a href="/logout"><button class="btn btn-danger">Sair</button></a>
-        {% else %}
-          <a href="/login"><button class="btn btn-ghost">Entrar</button></a>
-          <a href="/register"><button class="btn btn-primary">Criar conta</button></a>
-        {% endif %}
-      </div>
+    <h1>PromptSheet</h1>
+    <div class="subtitle">
+        Planilhas inteligentes geradas com IA
     </div>
 
-    <div class="hero">
-      <h2>Desbloqueie sua planilha premium</h2>
-      <p>
-        Acesso liberado após confirmação do pagamento via Mercado Pago.
-        <br>
-        Valor promocional: <strong>R$ 1,00</strong>.
-      </p>
-    </div>
+    {% if usuario %}
 
-    {% if not usuario %}
-      <div class="panel">
-        <p class="panel-title">Para continuar</p>
-        <p style="margin:0;color:#555">
-          Faça login ou crie sua conta para pagar e liberar o download.
-        </p>
-      </div>
-    {% else %}
-
-      <div class="panel">
-        <p class="panel-title">Sua conta</p>
-        <p style="margin:0;color:#555">
-          Logado como: <strong>{{ usuario.email }}</strong>
-        </p>
+        <div class="user-info">
+            Logado como <strong>{{ usuario.email }}</strong>
+        </div>
 
         {% if usuario.pago %}
-          <div class="status status-ok">
-            Pagamento confirmado ✔<br>
-            Seu download está liberado.
-          </div>
 
-          <a href="/download">
-            <button class="btn btn-ok" style="width:100%;margin-top:12px;padding:14px;border-radius:12px;">
-              Baixar Planilha
-            </button>
-          </a>
+            <div class="status-ok">
+                ✅ Acesso Premium Ativo
+            </div>
+
+            <a href="/download">
+                <button class="btn-success">Baixar Planilha</button>
+            </a>
 
         {% else %}
-          <div class="status status-warn">
-            Aguardando pagamento.<br>
-            Clique abaixo para pagar e liberar o download.
-          </div>
 
-          <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:14px;border-radius:12px;"
-                  onclick="pagar()">
-            Pagar R$ 1,00
-          </button>
+            <div class="status-warn">
+                🔒 Você ainda não possui acesso premium.
+            </div>
+
+            <button class="btn-primary" onclick="pagar()">
+                Desbloquear por R$ 1,00
+            </button>
+
         {% endif %}
-      </div>
+
+        <a href="/logout">
+            <button class="btn-ghost">Sair</button>
+        </a>
+
+    {% else %}
+
+        <a href="/login">
+            <button class="btn-primary">Entrar</button>
+        </a>
+
+        <a href="/register">
+            <button class="btn-ghost">Criar Conta</button>
+        </a>
 
     {% endif %}
 
     <div class="footer">
-      Pagamento seguro via Mercado Pago • PromptSheet
+        Pagamento seguro via Mercado Pago
     </div>
 
-  </div>
+</div>
 
-  <script>
-    async function pagar() {
-      try {
-        const resp = await fetch("/criar_preferencia", { method: "POST" });
-        const data = await resp.json();
+<script>
+function pagar() {
 
-        if (!resp.ok) {
-          alert(data.erro || "Erro ao iniciar pagamento.");
-          return;
-        }
-
+    fetch("/criar_preferencia", {
+        method: "POST"
+    })
+    .then(response => response.json())
+    .then(data => {
         if (data.init_point) {
-          window.location.href = data.init_point;
-          return;
+            window.location.href = data.init_point;
+        } else {
+            alert("Erro ao gerar pagamento.");
+            console.log(data);
         }
-
-        alert("Erro ao gerar pagamento.");
-        console.log(data);
-
-      } catch (e) {
-        console.error(e);
-        alert("Erro de conexão com o servidor.");
-      }
-    }
-  </script>
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Erro ao iniciar pagamento.");
+    });
+}
+</script>
 
 </body>
 </html>
