@@ -139,11 +139,21 @@ function voltar(){
 }
 
 async function assinarPremium(){
-  const r = await fetch("/premium", { method:"POST" });
-  const j = await r.json();
-  alert(j.erro || "Premium ainda em implantação.");
+  try {
+    const r = await fetch("/premium/assinar", { method: "POST" });
+    const j = await r.json();
+
+    if (j.init_point) {
+      // Redireciona para o Mercado Pago
+      window.location.href = j.init_point;
+      return;
+    }
+
+    alert(j.erro || "Erro ao iniciar assinatura.");
+  } catch (e) {
+    alert("Erro de conexão. Tente novamente.");
+  }
 }
 </script>
-
 </body>
 </html>
