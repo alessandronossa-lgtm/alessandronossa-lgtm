@@ -48,23 +48,29 @@
   </div>
 
 <script>
-let timer=null;
+let timer = null;
 
-async function checar(force=false){
-  try{
-    const r = await fetch("/status/{{ projeto.id }}", { cache:"no-store" });
+async function checar() {
+  try {
+    const r = await fetch("/status?projeto_id={{ projeto.id }}", { cache: "no-store" });
     const j = await r.json();
-    if(j.paid){
+
+    if (j.paid) {
       document.getElementById("okBox").style.display = "block";
-      if(timer) clearTimeout(timer);
-      setTimeout(()=> window.location.href="/projeto/{{ projeto.id }}", 900);
+      if (timer) clearTimeout(timer);
+
+      setTimeout(() => {
+        window.location.href = "/projeto/{{ projeto.id }}";
+      }, 900);
+
       return;
     }
-  }catch(e){}
-  timer = setTimeout(()=>checar(false), 3000);
+  } catch (e) {}
+
+  timer = setTimeout(checar, 3000);
 }
 
-checar(false);
+checar();
 </script>
 </body>
 </html>
