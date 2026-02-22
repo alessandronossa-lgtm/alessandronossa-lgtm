@@ -47,8 +47,8 @@ if not MP_ACCESS_TOKEN:
 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
 
 # preços (pode mudar depois)
-PRICE_AVULSO_24H = 9.90
-PRICE_PREMIUM_MENSAL = 19.90
+PRICE_AVULSO_24H = 1.00
+PRICE_PREMIUM_MENSAL = 2.00
 
 
 def now_utc():
