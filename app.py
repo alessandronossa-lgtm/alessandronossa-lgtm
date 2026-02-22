@@ -6,19 +6,18 @@ from functools import wraps
 
 from flask import (
     Flask, render_template, request, redirect, jsonify,
-    session, url_for, send_file, abort
+    session, url_for, send_file, abort, flash
 )
 
 import mercadopago
+import requests
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-
-# requests é usado para assinatura (preapproval)
-import requests
+from openpyxl import Workbook
 
 
 # =====================================================
-# CONFIG
+# APP CONFIG
 # =====================================================
 
 app = Flask(__name__)
@@ -46,9 +45,8 @@ if not MP_ACCESS_TOKEN:
     raise Exception("MP_ACCESS_TOKEN não configurado.")
 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
 
-# preços (pode mudar depois)
-PRICE_AVULSO_24H = 1.00
-PRICE_PREMIUM_MENSAL = 2.00
+# Admin email (Render env). Default: novo email do projeto.
+ADMIN_EMAIL = (os.getenv("ADMIN_EMAIL") or "promptsheetbrasil@gmail.com").strip().lower()
 
 
 def now_utc():
@@ -63,13 +61,21 @@ def base_url():
     env = os.getenv("BASE_URL")
     if env and env.strip():
         return env.rstrip("/")
-    # fallback (quando chamado dentro de request)
     return request.host_url.rstrip("/")
 
 
 # =====================================================
 # MODELS
 # =====================================================
+
+class Config(db.Model):
+    __tablename__ = "config"
+
+    id = db.Column(db.Integer, primary_key=True)  # sempre 1
+    price_avulso_24h = db.Column(db.Numeric(10, 2), nullable=False, default=9.90)
+    price_premium_mensal = db.Column(db.Numeric(10, 2), nullable=False, default=19.90)
+    updated_at = db.Column(db.DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
 
 class Usuario(db.Model):
     __tablename__ = "usuario"
@@ -93,11 +99,14 @@ class Usuario(db.Model):
         return check_password_hash(self.senha_hash, senha)
 
     def premium_ativo(self) -> bool:
-        if self.subscription_status in ("authorized", "active"):
+        if (self.subscription_status or "").lower() in ("authorized", "active"):
             return True
         if self.free_premium_until and self.free_premium_until > now_utc():
             return True
         return False
+
+    def is_admin(self) -> bool:
+        return (self.email or "").strip().lower() == ADMIN_EMAIL
 
 
 class Projeto(db.Model):
@@ -131,6 +140,24 @@ with app.app_context():
 
 
 # =====================================================
+# CONFIG HELPERS
+# =====================================================
+
+def get_config() -> Config:
+    cfg = Config.query.get(1)
+    if not cfg:
+        cfg = Config(id=1, price_avulso_24h=9.90, price_premium_mensal=19.90)
+        db.session.add(cfg)
+        db.session.commit()
+    return cfg
+
+
+def get_prices():
+    cfg = get_config()
+    return float(cfg.price_avulso_24h), float(cfg.price_premium_mensal)
+
+
+# =====================================================
 # AUTH HELPERS
 # =====================================================
 
@@ -146,6 +173,18 @@ def login_required(fn):
     def wrapper(*args, **kwargs):
         if not session.get("user_id"):
             return redirect(url_for("login"))
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        u = current_user()
+        if not u:
+            return redirect(url_for("login"))
+        if not u.is_admin():
+            abort(403)
         return fn(*args, **kwargs)
     return wrapper
 
@@ -207,9 +246,9 @@ def logout():
 @app.route("/")
 def index():
     u = current_user()
-    # se logado, manda pro painel
     if u:
         return redirect(url_for("app_home"))
+    # se quiser manter landing pública, ok.
     return render_template("index.html", usuario=u)
 
 
@@ -223,8 +262,8 @@ def app_home():
         prompt = (request.form.get("prompt") or "").strip()
 
         if not nome:
-            return render_template("app.html", usuario=u, projetos=Projeto.query.filter_by(user_id=u.id).all(),
-                                   erro="Dê um nome ao projeto.")
+            projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
+            return render_template("app.html", usuario=u, projetos=projetos, erro="Dê um nome ao projeto.")
 
         p = Projeto(user_id=u.id, nome=nome, prompt=prompt)
         db.session.add(p)
@@ -242,8 +281,12 @@ def projeto_view(projeto_id):
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
     premium = u.premium_ativo()
+    avulso_price, premium_price = get_prices()
 
-    acesso = AcessoProjeto.query.filter_by(user_id=u.id, projeto_id=p.id).order_by(AcessoProjeto.expires_at.desc()).first()
+    acesso = AcessoProjeto.query.filter_by(
+        user_id=u.id, projeto_id=p.id
+    ).order_by(AcessoProjeto.expires_at.desc()).first()
+
     acesso_ativo = False
     expira_em = None
     if acesso and acesso.expires_at > now_utc():
@@ -256,7 +299,9 @@ def projeto_view(projeto_id):
         projeto=p,
         premium=premium,
         acesso_ativo=acesso_ativo,
-        expira_em=expira_em
+        expira_em=expira_em,
+        price_avulso=avulso_price,
+        price_premium=premium_price
     )
 
 
@@ -268,25 +313,21 @@ def projeto_view(projeto_id):
 @login_required
 def premium_page():
     u = current_user()
-    return render_template("premium.html", usuario=u, price_premium=PRICE_PREMIUM_MENSAL)
+    _, premium_price = get_prices()
+    return render_template("premium.html", usuario=u, price_premium=premium_price)
 
 
 @app.route("/premium/assinar", methods=["POST"])
 @login_required
 def premium_assinar():
-    """
-    Cria uma assinatura recorrente (Mercado Pago Subscriptions /preapproval)
-    e retorna init_point para o usuário autorizar.
-    """
     u = current_user()
 
-    # Se já é premium, não cria de novo
     if u.premium_ativo():
         return jsonify({"erro": "Você já possui Premium ativo."}), 400
 
+    _, premium_price = get_prices()
+
     # Mercado Pago Subscriptions: /preapproval
-    # Docs: https://www.mercadopago.com.br/developers/en/reference/subscriptions/_preapproval/post
-    # Vamos criar sem plano, recorrência mensal.
     url = "https://api.mercadopago.com/preapproval"
     headers = {
         "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
@@ -299,12 +340,10 @@ def premium_assinar():
         "auto_recurring": {
             "frequency": 1,
             "frequency_type": "months",
-            "transaction_amount": float(PRICE_PREMIUM_MENSAL),
+            "transaction_amount": float(premium_price),
             "currency_id": "BRL"
         },
-        # back_url é a página que o MP usa quando o usuário volta
         "back_url": f"{base_url()}/premium/retorno",
-        # referência externa para relacionar com o usuário
         "external_reference": f"user:{u.id}"
     }
 
@@ -319,9 +358,8 @@ def premium_assinar():
     if not init_point or not sub_id:
         return jsonify({"erro": "Resposta inesperada do Mercado Pago.", "detalhes": resp}), 500
 
-    # registra no usuário como "iniciada"
     u.subscription_id = sub_id
-    u.subscription_status = resp.get("status") or "pending"
+    u.subscription_status = (resp.get("status") or "pending").lower()
     db.session.commit()
 
     return jsonify({"init_point": init_point})
@@ -330,10 +368,6 @@ def premium_assinar():
 @app.route("/premium/retorno")
 @login_required
 def premium_retorno():
-    """
-    O MP geralmente volta aqui após autorização.
-    O status definitivo chega por webhook; aqui só damos uma mensagem e mandamos para /app.
-    """
     return redirect(url_for("app_home"))
 
 
@@ -347,11 +381,11 @@ def comprar_diaria(projeto_id):
     u = current_user()
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
-    # Se é premium, não precisa comprar diária
     if u.premium_ativo():
         return jsonify({"erro": "Você já é Premium."}), 400
 
-    # external_reference para identificar no webhook
+    avulso_price, _ = get_prices()
+
     external_reference = f"user:{u.id}|project:{p.id}|kind:daily"
 
     preference_data = {
@@ -359,7 +393,7 @@ def comprar_diaria(projeto_id):
             "title": f"Acesso 24h - Projeto {p.nome}",
             "quantity": 1,
             "currency_id": "BRL",
-            "unit_price": float(PRICE_AVULSO_24H)
+            "unit_price": float(avulso_price)
         }],
         "payer": {"email": u.email},
         "external_reference": external_reference,
@@ -369,8 +403,6 @@ def comprar_diaria(projeto_id):
             "failure": f"{base_url()}/pendente/{p.id}",
             "pending": f"{base_url()}/pendente/{p.id}",
         },
-        # PIX tende a ficar pending; auto_return "all" ajuda quando houver retorno,
-        # mas a liberação real é via webhook + /status.
         "auto_return": "all"
     }
 
@@ -394,23 +426,19 @@ def pendente_page(projeto_id):
 @app.route("/status")
 @login_required
 def status():
-    """
-    Usado pelo pendente.html para checar se já pagou.
-    - Para diária: precisa projeto_id
-    - Para premium: pode checar premium direto
-    """
     u = current_user()
-
     projeto_id = request.args.get("projeto_id", type=int)
 
-    premium = u.premium_ativo()
-    if premium:
+    if u.premium_ativo():
         return jsonify({"paid": True, "premium": True})
 
     if not projeto_id:
         return jsonify({"paid": False, "premium": False})
 
-    acesso = AcessoProjeto.query.filter_by(user_id=u.id, projeto_id=projeto_id).order_by(AcessoProjeto.expires_at.desc()).first()
+    acesso = AcessoProjeto.query.filter_by(
+        user_id=u.id, projeto_id=projeto_id
+    ).order_by(AcessoProjeto.expires_at.desc()).first()
+
     if acesso and acesso.expires_at > now_utc():
         return jsonify({"paid": True, "premium": False, "expires_at": acesso.expires_at.isoformat()})
 
@@ -418,7 +446,7 @@ def status():
 
 
 # =====================================================
-# DOWNLOAD (protege por premium OU diária ativa)
+# DOWNLOAD (premium OU diária ativa)
 # =====================================================
 
 @app.route("/projeto/<int:projeto_id>/download")
@@ -428,11 +456,13 @@ def download_projeto(projeto_id):
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
     if not u.premium_ativo():
-        acesso = AcessoProjeto.query.filter_by(user_id=u.id, projeto_id=p.id).order_by(AcessoProjeto.expires_at.desc()).first()
+        acesso = AcessoProjeto.query.filter_by(
+            user_id=u.id, projeto_id=p.id
+        ).order_by(AcessoProjeto.expires_at.desc()).first()
+
         if not acesso or acesso.expires_at <= now_utc():
             return "Acesso negado. Compre a diária (24h) ou assine o Premium.", 403
 
-    # gera planilha (simples por enquanto; você pode ligar com seu gerador dinâmico depois)
     wb = Workbook()
     ws = wb.active
     ws.title = "PromptSheet"
@@ -455,26 +485,22 @@ def parse_webhook_event():
     """
     MP pode enviar:
     - query params: ?data.id=...&type=payment
-    - query params: ?id=...&topic=payment / merchant_order
+    - query params: ?id=...&topic=payment / merchant_order / preapproval
     - json: {"type":"payment","data":{"id":...}}
     """
-    # 1) JSON padrão
     data = request.get_json(silent=True) or {}
 
     if isinstance(data, dict) and data.get("type") and isinstance(data.get("data"), dict) and data["data"].get("id"):
         return data.get("type"), str(data["data"]["id"])
 
-    # 2) query: data.id e type
     t = request.args.get("type")
     did = request.args.get("data.id")
     if t and did:
         return t, str(did)
 
-    # 3) query: topic e id
     topic = request.args.get("topic")
     _id = request.args.get("id")
     if topic and _id:
-        # topic pode ser payment / merchant_order / preapproval
         return topic, str(_id)
 
     return None, None
@@ -483,13 +509,14 @@ def parse_webhook_event():
 def handle_payment(payment_id: str):
     pay_resp = sdk.payment().get(payment_id)
     payment = pay_resp.get("response", {})
+    status = (payment.get("status") or "").lower()
 
-    status = payment.get("status")
     if status != "approved":
         return
 
     external_reference = payment.get("external_reference") or ""
-    # exemplo: user:1|project:2|kind:daily
+
+    # user:1|project:2|kind:daily
     if "kind:daily" in external_reference and "project:" in external_reference and "user:" in external_reference:
         try:
             parts = external_reference.split("|")
@@ -505,9 +532,11 @@ def handle_payment(payment_id: str):
 
         expires = now_utc() + timedelta(hours=24)
 
-        acesso = AcessoProjeto.query.filter_by(user_id=user.id, projeto_id=proj.id).order_by(AcessoProjeto.expires_at.desc()).first()
+        acesso = AcessoProjeto.query.filter_by(
+            user_id=user.id, projeto_id=proj.id
+        ).order_by(AcessoProjeto.expires_at.desc()).first()
+
         if acesso and acesso.expires_at > now_utc():
-            # se já tem ativo, estende +24h (opcional)
             expires = acesso.expires_at + timedelta(hours=24)
 
         novo = AcessoProjeto(
@@ -521,10 +550,6 @@ def handle_payment(payment_id: str):
 
 
 def handle_preapproval(preapproval_id: str):
-    """
-    Consulta a assinatura e atualiza o usuário.
-    GET /preapproval/{id}
-    """
     url = f"https://api.mercadopago.com/preapproval/{preapproval_id}"
     headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
     r = requests.get(url, headers=headers, timeout=30)
@@ -532,10 +557,9 @@ def handle_preapproval(preapproval_id: str):
         return
 
     sub = r.json()
-    status = (sub.get("status") or "").lower()  # authorized, paused, cancelled, etc.
+    status = (sub.get("status") or "").lower()
     ext = sub.get("external_reference") or ""
 
-    # external_reference: user:<id>
     uid = None
     if ext.startswith("user:"):
         try:
@@ -543,10 +567,7 @@ def handle_preapproval(preapproval_id: str):
         except Exception:
             uid = None
 
-    # fallback: localizar por payer_email
-    user = None
-    if uid:
-        user = Usuario.query.get(uid)
+    user = Usuario.query.get(uid) if uid else None
     if not user:
         payer_email = sub.get("payer_email")
         if payer_email:
@@ -565,28 +586,94 @@ def webhook():
     try:
         event_type, event_id = parse_webhook_event()
 
-        # silencioso quando não identifica
         if not event_type or not event_id:
             return jsonify({"status": "ignored"}), 200
 
-        # payment
-        if event_type in ("payment",):
-            with app.app_context():
-                handle_payment(event_id)
+        if event_type == "payment":
+            handle_payment(event_id)
             return jsonify({"status": "ok"}), 200
 
-        # subscriptions preapproval
         if event_type in ("preapproval",):
-            with app.app_context():
-                handle_preapproval(event_id)
+            handle_preapproval(event_id)
             return jsonify({"status": "ok"}), 200
 
-        # merchant_order etc: ignora (ou você pode tratar depois)
         return jsonify({"status": "ignored"}), 200
 
     except Exception as e:
         print("Erro webhook:", e)
         return jsonify({"erro": "erro interno"}), 500
+
+
+# =====================================================
+# ADMIN
+# =====================================================
+
+@app.route("/admin")
+@login_required
+@admin_required
+def admin_home():
+    cfg = get_config()
+    users_count = Usuario.query.count()
+    projects_count = Projeto.query.count()
+    return render_template(
+        "admin.html",
+        config=cfg,
+        users_count=users_count,
+        projects_count=projects_count,
+        admin_email=ADMIN_EMAIL
+    )
+
+
+@app.route("/admin/users")
+@login_required
+@admin_required
+def admin_users():
+    users = Usuario.query.order_by(Usuario.created_at.desc()).all()
+    return render_template("admin_users.html", users=users, admin_email=ADMIN_EMAIL)
+
+
+@app.route("/admin/config", methods=["POST"])
+@login_required
+@admin_required
+def admin_save_config():
+    cfg = get_config()
+
+    def to_price(v, fallback):
+        try:
+            v = str(v).replace(",", ".").strip()
+            return round(float(v), 2)
+        except Exception:
+            return fallback
+
+    av = to_price(request.form.get("price_avulso_24h"), float(cfg.price_avulso_24h))
+    pr = to_price(request.form.get("price_premium_mensal"), float(cfg.price_premium_mensal))
+
+    cfg.price_avulso_24h = av
+    cfg.price_premium_mensal = pr
+    db.session.commit()
+
+    return redirect(url_for("admin_home"))
+
+
+@app.route("/admin/grant_premium", methods=["POST"])
+@login_required
+@admin_required
+def admin_grant_premium():
+    email = (request.form.get("email") or "").strip().lower()
+    days = request.form.get("days", type=int)
+
+    if not email or not days or days <= 0:
+        return redirect(url_for("admin_home"))
+
+    u = Usuario.query.filter_by(email=email).first()
+    if not u:
+        return redirect(url_for("admin_home"))
+
+    until = now_utc() + timedelta(days=days)
+    u.free_premium_until = until
+    db.session.commit()
+
+    return redirect(url_for("admin_users"))
 
 
 # =====================================================
