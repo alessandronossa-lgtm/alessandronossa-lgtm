@@ -1,7 +1,8 @@
-Flask
+flask
 gunicorn
+mercadopago
 flask_sqlalchemy
 psycopg2-binary
-mercadopago
 openpyxl
 werkzeug
+requests
