@@ -9,6 +9,7 @@ from flask import (
     session, url_for, send_file, abort, flash
 )
 
+
 import mercadopago
 import requests
 from flask_sqlalchemy import SQLAlchemy
@@ -21,6 +22,10 @@ from openpyxl import Workbook
 # =====================================================
 
 app = Flask(__name__)
+
+@app.route("/healthz")
+def healthz():
+    return "ok", 200
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
