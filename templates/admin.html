@@ -1,1 +1,162 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin • PromptSheet</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0b1220; --card:#111a2e; --muted:#9aa6bf; --text:#e8eeff;
+      --brand:#6c5ce7; --ok:#00b894; --warn:#f5a623; --line:rgba(255,255,255,.08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Inter,system-ui,Arial; background:linear-gradient(135deg,#0b1220,#0f1b34);
+      color:var(--text); min-height:100vh;
+    }
+    a{color:inherit; text-decoration:none}
+    .wrap{max-width:980px; margin:0 auto; padding:28px 18px 40px}
+    .top{
+      display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+    .title{
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .title h1{margin:0; font-size:22px}
+    .title p{margin:0; color:var(--muted); font-size:13px}
+    .btn{
+      border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--text);
+      padding:10px 12px; border-radius:10px; font-weight:600; cursor:pointer;
+    }
+    .btn:hover{border-color:rgba(255,255,255,.18)}
+    .btn.brand{background:var(--brand); border-color:transparent}
+    .btn.brand:hover{filter:brightness(.95)}
+    .grid{display:grid; grid-template-columns: 1fr 1fr; gap:14px}
+    @media (max-width: 820px){ .grid{grid-template-columns:1fr} }
+    .card{
+      background:rgba(17,26,46,.78); border:1px solid var(--line); border-radius:16px;
+      padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.35);
+    }
+    .card h2{margin:0 0 10px; font-size:16px}
+    .kpis{display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px}
+    .kpi{
+      border:1px solid var(--line); border-radius:14px; padding:14px;
+      background:rgba(255,255,255,.03);
+    }
+    .kpi .n{font-size:22px; font-weight:800}
+    .kpi .l{font-size:12px; color:var(--muted); margin-top:4px}
+    label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px}
+    input{
+      width:100%; padding:12px; border-radius:12px; border:1px solid var(--line);
+      background:rgba(0,0,0,.18); color:var(--text); outline:none;
+    }
+    input:focus{border-color:rgba(108,92,231,.55)}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    @media (max-width: 520px){ .row{grid-template-columns:1fr} }
+    .help{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.45}
+    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+    .pill{
+      display:inline-flex; gap:8px; align-items:center; padding:8px 10px; border-radius:999px;
+      border:1px solid var(--line); background:rgba(255,255,255,.03); font-size:12px; color:var(--muted);
+    }
+    .dot{width:8px; height:8px; border-radius:99px; background:var(--ok)}
+    .footer{margin-top:14px; font-size:12px; color:var(--muted)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
 
+    <div class="top">
+      <div class="title">
+        <h1>Painel Admin</h1>
+        <p>Gerencie preços e permissões sem mexer no código.</p>
+      </div>
+
+      <div class="actions">
+        <a class="btn" href="/admin/users">Ver usuários</a>
+        <a class="btn" href="/app">Voltar ao app</a>
+        <a class="btn" href="/logout">Sair</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Resumo</h2>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="n">{{ users_count }}</div>
+            <div class="l">Usuários cadastrados</div>
+          </div>
+          <div class="kpi">
+            <div class="n">{{ projects_count }}</div>
+            <div class="l">Projetos criados</div>
+          </div>
+        </div>
+
+        <div class="help" style="margin-top:14px">
+          <span class="pill"><span class="dot"></span> Admin autorizado</span>
+          <div style="margin-top:10px">
+            Admin Email (Render): <span class="mono">{{ admin_email }}</span>
+          </div>
+        </div>
+
+        <div class="footer">
+          Dica: mantenha <span class="mono">BASE_URL</span> configurado para webhook e retornos do Mercado Pago.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Preços (Config)</h2>
+
+        <form method="POST" action="/admin/config">
+          <div class="row">
+            <div>
+              <label>Avulso (24h por projeto)</label>
+              <input name="price_avulso_24h" value="{{ config.price_avulso_24h }}" placeholder="Ex: 9.90" />
+            </div>
+            <div>
+              <label>Premium (mensal recorrente)</label>
+              <input name="price_premium_mensal" value="{{ config.price_premium_mensal }}" placeholder="Ex: 19.90" />
+            </div>
+          </div>
+
+          <div class="help">
+            Aceita ponto ou vírgula. Ex: <b>19.90</b> ou <b>19,90</b>.
+          </div>
+
+          <div class="actions">
+            <button class="btn brand" type="submit">Salvar preços</button>
+            <a class="btn" href="/premium">Abrir página Premium</a>
+          </div>
+        </form>
+
+        <hr style="border:none;border-top:1px solid var(--line); margin:16px 0">
+
+        <h2>Premium Free (feedback)</h2>
+
+        <form method="POST" action="/admin/grant_premium">
+          <label>Email do usuário</label>
+          <input name="email" type="email" placeholder="usuario@email.com" required />
+
+          <label>Dias de Premium free</label>
+          <input name="days" type="number" min="1" step="1" placeholder="Ex: 7" required />
+
+          <div class="actions">
+            <button class="btn" type="submit">Conceder Premium</button>
+            <a class="btn" href="/admin/users">Ver lista e status</a>
+          </div>
+
+          <div class="help">
+            Isso não cria assinatura. Só libera Premium por tempo limitado (ideal para testers/feedback).
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
