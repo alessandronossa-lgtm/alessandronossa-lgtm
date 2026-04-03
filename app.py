@@ -1,20 +1,25 @@
 import os
+import re
 import json
 import tempfile
+import unicodedata
+from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from flask import (
     Flask, render_template, request, redirect, jsonify,
-    session, url_for, send_file, abort, flash
+    session, url_for, send_file, abort
 )
-
 
 import mercadopago
 import requests
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+
 from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
 
 
 # =====================================================
@@ -22,10 +27,6 @@ from openpyxl import Workbook
 # =====================================================
 
 app = Flask(__name__)
-
-@app.route("/healthz")
-def healthz():
-    return "ok", 200
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -36,7 +37,6 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise Exception("DATABASE_URL não configurada.")
 
-# Render/Postgres: às vezes vem postgres:// e precisa ser postgresql://
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
@@ -50,7 +50,6 @@ if not MP_ACCESS_TOKEN:
     raise Exception("MP_ACCESS_TOKEN não configurado.")
 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
 
-# Admin email (Render env). Default: novo email do projeto.
 ADMIN_EMAIL = (os.getenv("ADMIN_EMAIL") or "promptsheetbrasil@gmail.com").strip().lower()
 
 
@@ -59,10 +58,6 @@ def now_utc():
 
 
 def base_url():
-    """
-    Ideal: configurar BASE_URL no Render (ex: https://promptsheet-backend.onrender.com)
-    Fallback: usar request.host_url
-    """
     env = os.getenv("BASE_URL")
     if env and env.strip():
         return env.rstrip("/")
@@ -76,7 +71,7 @@ def base_url():
 class Config(db.Model):
     __tablename__ = "config"
 
-    id = db.Column(db.Integer, primary_key=True)  # sempre 1
+    id = db.Column(db.Integer, primary_key=True)
     price_avulso_24h = db.Column(db.Numeric(10, 2), nullable=False, default=9.90)
     price_premium_mensal = db.Column(db.Numeric(10, 2), nullable=False, default=19.90)
     updated_at = db.Column(db.DateTime(timezone=True), default=now_utc, onupdate=now_utc)
@@ -87,11 +82,9 @@ class Usuario(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True, nullable=False)
-
     senha_hash = db.Column(db.String(255), nullable=False)
 
-    # Premium (assinatura)
-    subscription_status = db.Column(db.String(50), default="none")  # none|authorized|active|paused|cancelled
+    subscription_status = db.Column(db.String(50), default="none")
     subscription_id = db.Column(db.String(120), nullable=True)
     free_premium_until = db.Column(db.DateTime(timezone=True), nullable=True)
 
@@ -121,7 +114,6 @@ class Projeto(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
     nome = db.Column(db.String(120), nullable=False)
     prompt = db.Column(db.Text, nullable=True)
-
     created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
 
 
@@ -131,11 +123,7 @@ class AcessoProjeto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
     projeto_id = db.Column(db.Integer, db.ForeignKey("projeto.id"), nullable=False)
-
-    # Avulso 24h
     expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
-
-    # rastreio
     payment_id = db.Column(db.String(120), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
 
@@ -145,13 +133,13 @@ with app.app_context():
 
 
 # =====================================================
-# CONFIG HELPERS
+# HELPERS GERAIS
 # =====================================================
 
 def get_config() -> Config:
     cfg = Config.query.get(1)
     if not cfg:
-        cfg = Config(id=1, price_avulso_24h=9.90, price_premium_mensal=19.90)
+        cfg = Config(id=1, price_avulso_24h=Decimal("9.90"), price_premium_mensal=Decimal("19.90"))
         db.session.add(cfg)
         db.session.commit()
     return cfg
@@ -161,10 +149,6 @@ def get_prices():
     cfg = get_config()
     return float(cfg.price_avulso_24h), float(cfg.price_premium_mensal)
 
-
-# =====================================================
-# AUTH HELPERS
-# =====================================================
 
 def current_user():
     uid = session.get("user_id")
@@ -195,6 +179,377 @@ def admin_required(fn):
 
 
 # =====================================================
+# MOTOR NOVO DE GERAÇÃO DE PLANILHA
+# =====================================================
+
+def normalize_text(text: str) -> str:
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    return text.lower().strip()
+
+
+def clean_column_name(name: str) -> str:
+    name = re.sub(r"\s+", " ", name.strip(" -,:;|"))
+    if not name:
+        return ""
+    return name[:40]
+
+
+def unique_columns(columns):
+    seen = set()
+    final = []
+    for col in columns:
+        key = normalize_text(col)
+        if key and key not in seen:
+            seen.add(key)
+            final.append(col)
+    return final
+
+
+def split_candidate_columns(text: str):
+    text = text.replace("\n", ", ")
+    text = re.sub(r"\s+e\s+", ", ", text, flags=re.IGNORECASE)
+    text = text.replace(";", ",").replace("|", ",")
+    parts = [clean_column_name(p) for p in text.split(",")]
+    return [p for p in parts if p]
+
+
+def extract_explicit_columns(prompt: str):
+    """
+    Tenta identificar trechos como:
+    - coluna data, coluna produto, coluna quantidade
+    - colunas: data, produto, quantidade
+    - deve ter coluna data, produto, valor
+    """
+    if not prompt:
+        return []
+
+    prompt_clean = prompt.strip()
+
+    patterns = [
+        r"colunas?\s*[:\-]\s*(.+)",
+        r"deve ter\s+colunas?\s*[:\-]?\s*(.+)",
+        r"nela deve ter\s+colunas?\s*[:\-]?\s*(.+)",
+        r"campos?\s*[:\-]\s*(.+)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, prompt_clean, flags=re.IGNORECASE)
+        if match:
+            tail = match.group(1)
+            tail = re.split(r"\.|\n", tail)[0]
+            cols = split_candidate_columns(tail)
+            if cols:
+                return unique_columns([c.title() for c in cols])
+
+    # caso "coluna data, coluna produto..."
+    found = re.findall(r"coluna\s+([a-zA-ZÀ-ÿ0-9 _/-]+)", prompt_clean, flags=re.IGNORECASE)
+    if found:
+        cols = []
+        for item in found:
+            item = re.split(r",|\.|\n", item)[0]
+            item = clean_column_name(item)
+            if item:
+                cols.append(item.title())
+        return unique_columns(cols)
+
+    return []
+
+
+def infer_columns_from_prompt(prompt: str):
+    p = normalize_text(prompt)
+
+    if any(k in p for k in ["estoque", "inventario", "almoxarifado"]):
+        return ["Data", "Produto", "Categoria", "Quantidade", "Estoque Mínimo", "Fornecedor"]
+
+    if any(k in p for k in ["venda", "vendas", "comissao", "faturamento"]):
+        return ["Data", "Cliente", "Produto", "Quantidade", "Preço Unitário", "Valor Total"]
+
+    if any(k in p for k in ["financeiro", "fluxo de caixa", "caixa"]):
+        return ["Data", "Descrição", "Categoria", "Entrada", "Saída", "Saldo"]
+
+    if any(k in p for k in ["despesa", "despesas", "gastos", "custos"]):
+        return ["Data", "Descrição", "Categoria", "Valor", "Forma de Pagamento", "Observação"]
+
+    if any(k in p for k in ["pedido", "pedidos", "orcamento", "orçamento"]):
+        return ["Data", "Cliente", "Produto", "Quantidade", "Preço Unitário", "Valor Total", "Status"]
+
+    if any(k in p for k in ["cliente", "clientes", "cadastro de clientes"]):
+        return ["Nome", "Telefone", "E-mail", "Cidade", "Observação"]
+
+    if any(k in p for k in ["funcionario", "funcionário", "colaborador", "equipe"]):
+        return ["Nome", "Cargo", "Telefone", "E-mail", "Cidade", "Observação"]
+
+    return ["Data", "Descrição", "Valor"]
+
+
+def detect_columns(prompt: str):
+    explicit = extract_explicit_columns(prompt)
+    if explicit:
+        return explicit
+    return infer_columns_from_prompt(prompt)
+
+
+def is_money_column(name: str) -> bool:
+    n = normalize_text(name)
+    keys = ["preco", "preço", "valor", "entrada", "saida", "saída", "saldo", "custo", "total"]
+    return any(k in n for k in keys)
+
+
+def is_integer_column(name: str) -> bool:
+    n = normalize_text(name)
+    keys = ["quantidade", "qtd", "estoque", "minimo", "mínimo"]
+    return any(k in n for k in keys)
+
+
+def has_column(columns, target):
+    target_n = normalize_text(target)
+    return any(normalize_text(c) == target_n for c in columns)
+
+
+def col_index(columns, target):
+    target_n = normalize_text(target)
+    for idx, col in enumerate(columns, start=1):
+        if normalize_text(col) == target_n:
+            return idx
+    return None
+
+
+def build_example_rows(columns):
+    """
+    Só para o arquivo ficar com aparência profissional e fórmula visível.
+    """
+    rows = []
+
+    if has_column(columns, "Quantidade") and has_column(columns, "Preço Unitário") and has_column(columns, "Valor Total"):
+        rows = [
+            ["01/04/2026" if has_column(columns, "Data") else None,
+             "Cliente Exemplo" if has_column(columns, "Cliente") else None,
+             "Produto A" if has_column(columns, "Produto") else None,
+             2,
+             35.0,
+             None,
+             "Pendente" if has_column(columns, "Status") else None],
+            ["02/04/2026" if has_column(columns, "Data") else None,
+             "Cliente Exemplo 2" if has_column(columns, "Cliente") else None,
+             "Produto B" if has_column(columns, "Produto") else None,
+             3,
+             20.0,
+             None,
+             "Pago" if has_column(columns, "Status") else None],
+        ]
+
+    elif has_column(columns, "Entrada") and has_column(columns, "Saída") and has_column(columns, "Saldo"):
+        rows = [
+            ["01/04/2026", "Saldo inicial", "Financeiro", 500.0, 0.0, None],
+            ["02/04/2026", "Pagamento fornecedor", "Despesa", 0.0, 120.0, None],
+        ]
+
+    elif has_column(columns, "Quantidade") and has_column(columns, "Estoque Mínimo"):
+        rows = [
+            ["01/04/2026" if has_column(columns, "Data") else None,
+             "Produto A",
+             "Categoria A" if has_column(columns, "Categoria") else None,
+             25,
+             10,
+             "Fornecedor Exemplo" if has_column(columns, "Fornecedor") else None],
+            ["02/04/2026" if has_column(columns, "Data") else None,
+             "Produto B",
+             "Categoria B" if has_column(columns, "Categoria") else None,
+             8,
+             5,
+             "Fornecedor Exemplo" if has_column(columns, "Fornecedor") else None],
+        ]
+
+    else:
+        rows = [[None for _ in columns] for _ in range(2)]
+
+    normalized_rows = []
+    for raw in rows:
+        row = []
+        value_idx = 0
+        for col in columns:
+            if value_idx < len(raw):
+                row.append(raw[value_idx])
+            else:
+                row.append(None)
+            value_idx += 1
+        normalized_rows.append(row[:len(columns)])
+
+    return normalized_rows
+
+
+def style_sheet(ws, columns, prompt, project_name):
+    blue = "1F4E78"
+    green = "D9EAD3"
+    dark = "0F243E"
+    light_fill = "F7FBFF"
+    total_fill = "FFF2CC"
+    white = "FFFFFF"
+
+    thin_gray = Side(style="thin", color="D9D9D9")
+    border = Border(left=thin_gray, right=thin_gray, top=thin_gray, bottom=thin_gray)
+
+    # título
+    ws["A1"] = "PromptSheet"
+    ws["A1"].font = Font(size=18, bold=True, color=dark)
+    ws["A2"] = f"Projeto: {project_name}"
+    ws["A2"].font = Font(size=11, bold=True, color=blue)
+    ws["A3"] = f"Prompt: {prompt or ''}"
+    ws["A3"].font = Font(size=10, italic=True, color="666666")
+
+    # cabeçalho começa na linha 5
+    header_row = 5
+    for idx, col in enumerate(columns, start=1):
+        cell = ws.cell(row=header_row, column=idx, value=col)
+        cell.font = Font(bold=True, color=white)
+        cell.fill = PatternFill("solid", fgColor=blue)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = border
+
+    ws.freeze_panes = "A6"
+    ws.auto_filter.ref = f"A5:{get_column_letter(len(columns))}5"
+
+    # largura inicial
+    for idx, col in enumerate(columns, start=1):
+        width = max(len(col) + 4, 14)
+        ws.column_dimensions[get_column_letter(idx)].width = min(width, 28)
+
+    # estilos linhas
+    for row in range(6, 50):
+        for col in range(1, len(columns) + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.border = border
+            cell.alignment = Alignment(vertical="center")
+            if row % 2 == 0:
+                cell.fill = PatternFill("solid", fgColor=light_fill)
+
+    # formatos numéricos
+    for idx, col in enumerate(columns, start=1):
+        if is_money_column(col):
+            for row in range(6, 200):
+                ws.cell(row=row, column=idx).number_format = 'R$ #,##0.00'
+        elif is_integer_column(col):
+            for row in range(6, 200):
+                ws.cell(row=row, column=idx).number_format = '0'
+
+    # linha de totais
+    total_row = 8
+    if len(columns) > 0:
+        ws.cell(row=total_row, column=1, value="Totais")
+        ws.cell(row=total_row, column=1).font = Font(bold=True)
+        ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor=total_fill)
+
+        for idx, col in enumerate(columns, start=2):
+            n = normalize_text(col)
+            letter = get_column_letter(idx)
+            cell = ws.cell(row=total_row, column=idx)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill("solid", fgColor=total_fill)
+            cell.border = border
+
+            if any(k in n for k in ["quantidade", "valor", "entrada", "saida", "saída", "preco", "preço", "custo", "estoque"]):
+                cell.value = f"=SUM({letter}6:{letter}7)"
+            elif n == "saldo":
+                cell.value = f"={letter}7"
+
+    # bordas da área título
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=min(4, len(columns)))
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=min(6, len(columns)))
+    ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=min(max(6, len(columns)), 8))
+
+    # altura
+    ws.row_dimensions[1].height = 26
+    ws.row_dimensions[5].height = 24
+
+    return ws
+
+
+def apply_formulas(ws, columns):
+    """
+    Fórmulas automáticas inteligentes.
+    """
+    # vendas / pedidos
+    q_idx = col_index(columns, "Quantidade")
+    pu_idx = col_index(columns, "Preço Unitário")
+    vt_idx = col_index(columns, "Valor Total")
+
+    if q_idx and pu_idx and vt_idx:
+        for row in (6, 7):
+            q_letter = get_column_letter(q_idx)
+            pu_letter = get_column_letter(pu_idx)
+            ws.cell(row=row, column=vt_idx).value = f"={q_letter}{row}*{pu_letter}{row}"
+
+    # financeiro
+    e_idx = col_index(columns, "Entrada")
+    s_idx = col_index(columns, "Saída")
+    saldo_idx = col_index(columns, "Saldo")
+
+    if e_idx and s_idx and saldo_idx:
+        e_letter = get_column_letter(e_idx)
+        s_letter = get_column_letter(s_idx)
+        saldo_letter = get_column_letter(saldo_idx)
+
+        ws.cell(row=6, column=saldo_idx).value = f"={e_letter}6-{s_letter}6"
+        ws.cell(row=7, column=saldo_idx).value = f"={saldo_letter}6+{e_letter}7-{s_letter}7"
+
+
+def fill_example_data(ws, columns):
+    rows = build_example_rows(columns)
+
+    for row_offset, data in enumerate(rows, start=6):
+        for idx, value in enumerate(data, start=1):
+            col_name = columns[idx - 1]
+
+            if value is None:
+                continue
+
+            if normalize_text(col_name) == "valor total":
+                continue
+
+            if normalize_text(col_name) == "saldo":
+                continue
+
+            ws.cell(row=row_offset, column=idx, value=value)
+
+    apply_formulas(ws, columns)
+
+    # ajuste final de largura com base nos dados
+    for idx, col in enumerate(columns, start=1):
+        letter = get_column_letter(idx)
+        max_len = len(str(col))
+        for row in range(6, 9):
+            val = ws.cell(row=row, column=idx).value
+            if val is not None:
+                max_len = max(max_len, len(str(val)))
+        ws.column_dimensions[letter].width = min(max(max_len + 3, 14), 30)
+
+
+def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
+    columns = detect_columns(prompt)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Planilha"
+
+    style_sheet(ws, columns, prompt, project_name)
+    fill_example_data(ws, columns)
+
+    return wb
+
+
+# =====================================================
+# HEALTH
+# =====================================================
+
+@app.route("/healthz")
+def healthz():
+    return "ok", 200
+
+
+# =====================================================
 # AUTH ROUTES
 # =====================================================
 
@@ -212,7 +567,6 @@ def register():
 
         u = Usuario(email=email)
         u.set_senha(senha)
-
         db.session.add(u)
         db.session.commit()
 
@@ -253,7 +607,6 @@ def index():
     u = current_user()
     if u:
         return redirect(url_for("app_home"))
-    # se quiser manter landing pública, ok.
     return render_template("index.html", usuario=u)
 
 
@@ -311,7 +664,7 @@ def projeto_view(projeto_id):
 
 
 # =====================================================
-# PREMIUM (PÁGINA + ASSINATURA REAL)
+# PREMIUM
 # =====================================================
 
 @app.route("/premium")
@@ -332,7 +685,6 @@ def premium_assinar():
 
     _, premium_price = get_prices()
 
-    # Mercado Pago Subscriptions: /preapproval
     url = "https://api.mercadopago.com/preapproval"
     headers = {
         "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
@@ -377,7 +729,7 @@ def premium_retorno():
 
 
 # =====================================================
-# AVULSO 24H POR PROJETO (Checkout Pro Preference)
+# AVULSO 24H
 # =====================================================
 
 @app.route("/projeto/<int:projeto_id>/comprar_diaria", methods=["POST"])
@@ -390,7 +742,6 @@ def comprar_diaria(projeto_id):
         return jsonify({"erro": "Você já é Premium."}), 400
 
     avulso_price, _ = get_prices()
-
     external_reference = f"user:{u.id}|project:{p.id}|kind:daily"
 
     preference_data = {
@@ -451,7 +802,7 @@ def status():
 
 
 # =====================================================
-# DOWNLOAD (premium OU diária ativa)
+# DOWNLOAD
 # =====================================================
 
 @app.route("/projeto/<int:projeto_id>/download")
@@ -468,14 +819,7 @@ def download_projeto(projeto_id):
         if not acesso or acesso.expires_at <= now_utc():
             return "Acesso negado. Compre a diária (24h) ou assine o Premium.", 403
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "PromptSheet"
-    ws["A1"] = "PromptSheet"
-    ws["A2"] = f"Usuário: {u.email}"
-    ws["A3"] = f"Projeto: {p.nome}"
-    ws["A4"] = f"Prompt: {p.prompt or ''}"
-
+    wb = generate_workbook_from_prompt(p.nome, p.prompt or "")
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
     wb.save(temp.name)
 
@@ -483,16 +827,10 @@ def download_projeto(projeto_id):
 
 
 # =====================================================
-# WEBHOOK (payment + preapproval)
+# WEBHOOK
 # =====================================================
 
 def parse_webhook_event():
-    """
-    MP pode enviar:
-    - query params: ?data.id=...&type=payment
-    - query params: ?id=...&topic=payment / merchant_order / preapproval
-    - json: {"type":"payment","data":{"id":...}}
-    """
     data = request.get_json(silent=True) or {}
 
     if isinstance(data, dict) and data.get("type") and isinstance(data.get("data"), dict) and data["data"].get("id"):
@@ -521,7 +859,6 @@ def handle_payment(payment_id: str):
 
     external_reference = payment.get("external_reference") or ""
 
-    # user:1|project:2|kind:daily
     if "kind:daily" in external_reference and "project:" in external_reference and "user:" in external_reference:
         try:
             parts = external_reference.split("|")
