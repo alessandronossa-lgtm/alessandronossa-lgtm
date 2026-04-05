@@ -3,7 +3,7 @@ import re
 import json
 import tempfile
 import unicodedata
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
@@ -16,6 +16,7 @@ import mercadopago
 import requests
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
@@ -42,6 +43,7 @@ if DATABASE_URL.startswith("postgres://"):
 
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 
 db = SQLAlchemy(app)
 
@@ -72,8 +74,8 @@ class Config(db.Model):
     __tablename__ = "config"
 
     id = db.Column(db.Integer, primary_key=True)
-    price_avulso_24h = db.Column(db.Numeric(10, 2), nullable=False, default=9.90)
-    price_premium_mensal = db.Column(db.Numeric(10, 2), nullable=False, default=19.90)
+    price_avulso_24h = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("9.90"))
+    price_premium_mensal = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("19.90"))
     updated_at = db.Column(db.DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 
 
@@ -97,7 +99,8 @@ class Usuario(db.Model):
         return check_password_hash(self.senha_hash, senha)
 
     def premium_ativo(self) -> bool:
-        if (self.subscription_status or "").lower() in ("authorized", "active"):
+        status = (self.subscription_status or "").lower()
+        if status in ("authorized", "active"):
             return True
         if self.free_premium_until and self.free_premium_until > now_utc():
             return True
@@ -137,7 +140,7 @@ with app.app_context():
 # =====================================================
 
 def get_config() -> Config:
-    cfg = Config.query.get(1)
+    cfg = db.session.get(Config, 1)
     if not cfg:
         cfg = Config(id=1, price_avulso_24h=Decimal("9.90"), price_premium_mensal=Decimal("19.90"))
         db.session.add(cfg)
@@ -154,7 +157,7 @@ def current_user():
     uid = session.get("user_id")
     if not uid:
         return None
-    return Usuario.query.get(uid)
+    return db.session.get(Usuario, uid)
 
 
 def login_required(fn):
@@ -178,8 +181,20 @@ def admin_required(fn):
     return wrapper
 
 
+def sanitize_project_filename(name: str) -> str:
+    safe = secure_filename((name or "planilha").strip())
+    return safe or "planilha"
+
+
+def to_decimal(value, fallback: Decimal) -> Decimal:
+    try:
+        return Decimal(str(value).replace(",", ".").strip())
+    except (InvalidOperation, AttributeError, ValueError):
+        return fallback
+
+
 # =====================================================
-# MOTOR NOVO DE GERAÇÃO DE PLANILHA
+# MOTOR DE GERAÇÃO DE PLANILHA
 # =====================================================
 
 def normalize_text(text: str) -> str:
@@ -191,7 +206,7 @@ def normalize_text(text: str) -> str:
 
 
 def clean_column_name(name: str) -> str:
-    name = re.sub(r"\s+", " ", name.strip(" -,:;|"))
+    name = re.sub(r"\s+", " ", (name or "").strip(" -,:;|"))
     if not name:
         return ""
     return name[:40]
@@ -209,7 +224,7 @@ def unique_columns(columns):
 
 
 def split_candidate_columns(text: str):
-    text = text.replace("\n", ", ")
+    text = (text or "").replace("\n", ", ")
     text = re.sub(r"\s+e\s+", ", ", text, flags=re.IGNORECASE)
     text = text.replace(";", ",").replace("|", ",")
     parts = [clean_column_name(p) for p in text.split(",")]
@@ -217,12 +232,6 @@ def split_candidate_columns(text: str):
 
 
 def extract_explicit_columns(prompt: str):
-    """
-    Tenta identificar trechos como:
-    - coluna data, coluna produto, coluna quantidade
-    - colunas: data, produto, quantidade
-    - deve ter coluna data, produto, valor
-    """
     if not prompt:
         return []
 
@@ -244,7 +253,6 @@ def extract_explicit_columns(prompt: str):
             if cols:
                 return unique_columns([c.title() for c in cols])
 
-    # caso "coluna data, coluna produto..."
     found = re.findall(r"coluna\s+([a-zA-ZÀ-ÿ0-9 _/-]+)", prompt_clean, flags=re.IGNORECASE)
     if found:
         cols = []
@@ -264,7 +272,7 @@ def infer_columns_from_prompt(prompt: str):
     if any(k in p for k in ["estoque", "inventario", "almoxarifado"]):
         return ["Data", "Produto", "Categoria", "Quantidade", "Estoque Mínimo", "Fornecedor"]
 
-    if any(k in p for k in ["venda", "vendas", "comissao", "faturamento"]):
+    if any(k in p for k in ["venda", "vendas", "comissao", "comissão", "faturamento"]):
         return ["Data", "Cliente", "Produto", "Quantidade", "Preço Unitário", "Valor Total"]
 
     if any(k in p for k in ["financeiro", "fluxo de caixa", "caixa"]):
@@ -294,13 +302,13 @@ def detect_columns(prompt: str):
 
 def is_money_column(name: str) -> bool:
     n = normalize_text(name)
-    keys = ["preco", "preço", "valor", "entrada", "saida", "saída", "saldo", "custo", "total"]
+    keys = ["preco", "valor", "entrada", "saida", "saldo", "custo", "total"]
     return any(k in n for k in keys)
 
 
 def is_integer_column(name: str) -> bool:
     n = normalize_text(name)
-    keys = ["quantidade", "qtd", "estoque", "minimo", "mínimo"]
+    keys = ["quantidade", "qtd", "estoque", "minimo"]
     return any(k in n for k in keys)
 
 
@@ -317,73 +325,61 @@ def col_index(columns, target):
     return None
 
 
-def build_example_rows(columns):
-    """
-    Só para o arquivo ficar com aparência profissional e fórmula visível.
-    """
-    rows = []
+def value_for_column(col_name: str, row_number: int):
+    name = normalize_text(col_name)
 
-    if has_column(columns, "Quantidade") and has_column(columns, "Preço Unitário") and has_column(columns, "Valor Total"):
-        rows = [
-            ["01/04/2026" if has_column(columns, "Data") else None,
-             "Cliente Exemplo" if has_column(columns, "Cliente") else None,
-             "Produto A" if has_column(columns, "Produto") else None,
-             2,
-             35.0,
-             None,
-             "Pendente" if has_column(columns, "Status") else None],
-            ["02/04/2026" if has_column(columns, "Data") else None,
-             "Cliente Exemplo 2" if has_column(columns, "Cliente") else None,
-             "Produto B" if has_column(columns, "Produto") else None,
-             3,
-             20.0,
-             None,
-             "Pago" if has_column(columns, "Status") else None],
-        ]
+    if name == "data":
+        return f"0{row_number}/04/2026"
+    if name == "cliente":
+        return f"Cliente Exemplo {row_number - 5}"
+    if name == "produto":
+        return f"Produto {chr(64 + row_number - 5)}"
+    if name == "categoria":
+        return f"Categoria {row_number - 5}"
+    if name == "fornecedor":
+        return "Fornecedor Exemplo"
+    if name == "status":
+        return "Pendente" if row_number == 6 else "Pago"
+    if name == "descricao":
+        return "Lançamento exemplo" if row_number == 6 else "Movimentação exemplo"
+    if name == "observacao":
+        return ""
+    if name == "forma de pagamento":
+        return "PIX" if row_number == 6 else "Boleto"
+    if name == "telefone":
+        return "(27) 99999-9999"
+    if name == "e-mail":
+        return f"contato{row_number - 5}@exemplo.com"
+    if name == "cidade":
+        return "Vila Velha"
+    if name == "nome":
+        return f"Nome Exemplo {row_number - 5}"
+    if name == "cargo":
+        return "Vendedor"
 
-    elif has_column(columns, "Entrada") and has_column(columns, "Saída") and has_column(columns, "Saldo"):
-        rows = [
-            ["01/04/2026", "Saldo inicial", "Financeiro", 500.0, 0.0, None],
-            ["02/04/2026", "Pagamento fornecedor", "Despesa", 0.0, 120.0, None],
-        ]
+    if name in ("quantidade", "qtd"):
+        return 2 if row_number == 6 else 3
+    if name == "estoque minimo":
+        return 10 if row_number == 6 else 5
+    if name == "estoque":
+        return 25 if row_number == 6 else 8
+    if name == "preco unitario":
+        return 35.0 if row_number == 6 else 20.0
+    if name == "valor":
+        return 150.0 if row_number == 6 else 90.0
+    if name == "entrada":
+        return 500.0 if row_number == 6 else 0.0
+    if name == "saida":
+        return 0.0 if row_number == 6 else 120.0
 
-    elif has_column(columns, "Quantidade") and has_column(columns, "Estoque Mínimo"):
-        rows = [
-            ["01/04/2026" if has_column(columns, "Data") else None,
-             "Produto A",
-             "Categoria A" if has_column(columns, "Categoria") else None,
-             25,
-             10,
-             "Fornecedor Exemplo" if has_column(columns, "Fornecedor") else None],
-            ["02/04/2026" if has_column(columns, "Data") else None,
-             "Produto B",
-             "Categoria B" if has_column(columns, "Categoria") else None,
-             8,
-             5,
-             "Fornecedor Exemplo" if has_column(columns, "Fornecedor") else None],
-        ]
+    if name in ("valor total", "saldo"):
+        return None
 
-    else:
-        rows = [[None for _ in columns] for _ in range(2)]
-
-    normalized_rows = []
-    for raw in rows:
-        row = []
-        value_idx = 0
-        for col in columns:
-            if value_idx < len(raw):
-                row.append(raw[value_idx])
-            else:
-                row.append(None)
-            value_idx += 1
-        normalized_rows.append(row[:len(columns)])
-
-    return normalized_rows
+    return ""
 
 
 def style_sheet(ws, columns, prompt, project_name):
     blue = "1F4E78"
-    green = "D9EAD3"
     dark = "0F243E"
     light_fill = "F7FBFF"
     total_fill = "FFF2CC"
@@ -392,15 +388,22 @@ def style_sheet(ws, columns, prompt, project_name):
     thin_gray = Side(style="thin", color="D9D9D9")
     border = Border(left=thin_gray, right=thin_gray, top=thin_gray, bottom=thin_gray)
 
-    # título
+    title_end_col = max(1, min(4, len(columns)))
+    subtitle_end_col = max(1, min(6, len(columns)))
+    prompt_end_col = max(1, min(max(6, len(columns)), 8))
+
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=title_end_col)
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=subtitle_end_col)
+    ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=prompt_end_col)
+
     ws["A1"] = "PromptSheet"
     ws["A1"].font = Font(size=18, bold=True, color=dark)
     ws["A2"] = f"Projeto: {project_name}"
     ws["A2"].font = Font(size=11, bold=True, color=blue)
     ws["A3"] = f"Prompt: {prompt or ''}"
     ws["A3"].font = Font(size=10, italic=True, color="666666")
+    ws["A3"].alignment = Alignment(wrap_text=True)
 
-    # cabeçalho começa na linha 5
     header_row = 5
     for idx, col in enumerate(columns, start=1):
         cell = ws.cell(row=header_row, column=idx, value=col)
@@ -412,12 +415,10 @@ def style_sheet(ws, columns, prompt, project_name):
     ws.freeze_panes = "A6"
     ws.auto_filter.ref = f"A5:{get_column_letter(len(columns))}5"
 
-    # largura inicial
     for idx, col in enumerate(columns, start=1):
         width = max(len(col) + 4, 14)
         ws.column_dimensions[get_column_letter(idx)].width = min(width, 28)
 
-    # estilos linhas
     for row in range(6, 50):
         for col in range(1, len(columns) + 1):
             cell = ws.cell(row=row, column=col)
@@ -426,7 +427,6 @@ def style_sheet(ws, columns, prompt, project_name):
             if row % 2 == 0:
                 cell.fill = PatternFill("solid", fgColor=light_fill)
 
-    # formatos numéricos
     for idx, col in enumerate(columns, start=1):
         if is_money_column(col):
             for row in range(6, 200):
@@ -435,43 +435,33 @@ def style_sheet(ws, columns, prompt, project_name):
             for row in range(6, 200):
                 ws.cell(row=row, column=idx).number_format = '0'
 
-    # linha de totais
     total_row = 8
-    if len(columns) > 0:
-        ws.cell(row=total_row, column=1, value="Totais")
-        ws.cell(row=total_row, column=1).font = Font(bold=True)
-        ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor=total_fill)
+    ws.cell(row=total_row, column=1, value="Totais")
+    ws.cell(row=total_row, column=1).font = Font(bold=True)
+    ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor=total_fill)
+    ws.cell(row=total_row, column=1).border = border
 
-        for idx, col in enumerate(columns, start=2):
-            n = normalize_text(col)
-            letter = get_column_letter(idx)
-            cell = ws.cell(row=total_row, column=idx)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill("solid", fgColor=total_fill)
-            cell.border = border
+    for idx, col in enumerate(columns, start=2):
+        n = normalize_text(col)
+        letter = get_column_letter(idx)
+        cell = ws.cell(row=total_row, column=idx)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor=total_fill)
+        cell.border = border
 
-            if any(k in n for k in ["quantidade", "valor", "entrada", "saida", "saída", "preco", "preço", "custo", "estoque"]):
-                cell.value = f"=SUM({letter}6:{letter}7)"
-            elif n == "saldo":
-                cell.value = f"={letter}7"
+        if any(k in n for k in ["quantidade", "valor", "entrada", "saida", "preco", "custo", "estoque"]):
+            cell.value = f"=SUM({letter}6:{letter}7)"
+        elif n == "saldo":
+            cell.value = f"={letter}7"
 
-    # bordas da área título
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=min(4, len(columns)))
-    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=min(6, len(columns)))
-    ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=min(max(6, len(columns)), 8))
-
-    # altura
     ws.row_dimensions[1].height = 26
+    ws.row_dimensions[3].height = 34
     ws.row_dimensions[5].height = 24
 
     return ws
 
 
 def apply_formulas(ws, columns):
-    """
-    Fórmulas automáticas inteligentes.
-    """
-    # vendas / pedidos
     q_idx = col_index(columns, "Quantidade")
     pu_idx = col_index(columns, "Preço Unitário")
     vt_idx = col_index(columns, "Valor Total")
@@ -482,7 +472,6 @@ def apply_formulas(ws, columns):
             pu_letter = get_column_letter(pu_idx)
             ws.cell(row=row, column=vt_idx).value = f"={q_letter}{row}*{pu_letter}{row}"
 
-    # financeiro
     e_idx = col_index(columns, "Entrada")
     s_idx = col_index(columns, "Saída")
     saldo_idx = col_index(columns, "Saldo")
@@ -497,26 +486,14 @@ def apply_formulas(ws, columns):
 
 
 def fill_example_data(ws, columns):
-    rows = build_example_rows(columns)
-
-    for row_offset, data in enumerate(rows, start=6):
-        for idx, value in enumerate(data, start=1):
-            col_name = columns[idx - 1]
-
-            if value is None:
-                continue
-
-            if normalize_text(col_name) == "valor total":
-                continue
-
-            if normalize_text(col_name) == "saldo":
-                continue
-
-            ws.cell(row=row_offset, column=idx, value=value)
+    for row in (6, 7):
+        for idx, col_name in enumerate(columns, start=1):
+            value = value_for_column(col_name, row)
+            if value is not None:
+                ws.cell(row=row, column=idx, value=value)
 
     apply_formulas(ws, columns)
 
-    # ajuste final de largura com base nos dados
     for idx, col in enumerate(columns, start=1):
         letter = get_column_letter(idx)
         max_len = len(str(col))
@@ -823,7 +800,8 @@ def download_projeto(projeto_id):
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
     wb.save(temp.name)
 
-    return send_file(temp.name, as_attachment=True, download_name=f"{p.nome}.xlsx")
+    download_name = f"{sanitize_project_filename(p.nome)}.xlsx"
+    return send_file(temp.name, as_attachment=True, download_name=download_name)
 
 
 # =====================================================
@@ -867,9 +845,17 @@ def handle_payment(payment_id: str):
         except Exception:
             return
 
-        user = Usuario.query.get(uid)
-        proj = Projeto.query.get(pid)
+        user = db.session.get(Usuario, uid)
+        proj = db.session.get(Projeto, pid)
         if not user or not proj or proj.user_id != user.id:
+            return
+
+        existing_same_payment = AcessoProjeto.query.filter_by(
+            user_id=user.id,
+            projeto_id=proj.id,
+            payment_id=str(payment_id)
+        ).first()
+        if existing_same_payment:
             return
 
         expires = now_utc() + timedelta(hours=24)
@@ -885,7 +871,7 @@ def handle_payment(payment_id: str):
             user_id=user.id,
             projeto_id=proj.id,
             expires_at=expires,
-            payment_id=payment_id
+            payment_id=str(payment_id)
         )
         db.session.add(novo)
         db.session.commit()
@@ -909,11 +895,11 @@ def handle_preapproval(preapproval_id: str):
         except Exception:
             uid = None
 
-    user = Usuario.query.get(uid) if uid else None
+    user = db.session.get(Usuario, uid) if uid else None
     if not user:
-        payer_email = sub.get("payer_email")
+        payer_email = (sub.get("payer_email") or "").strip().lower()
         if payer_email:
-            user = Usuario.query.filter_by(email=payer_email.lower()).first()
+            user = Usuario.query.filter_by(email=payer_email).first()
 
     if not user:
         return
@@ -943,6 +929,7 @@ def webhook():
 
     except Exception as e:
         print("Erro webhook:", e)
+        db.session.rollback()
         return jsonify({"erro": "erro interno"}), 500
 
 
@@ -980,18 +967,11 @@ def admin_users():
 def admin_save_config():
     cfg = get_config()
 
-    def to_price(v, fallback):
-        try:
-            v = str(v).replace(",", ".").strip()
-            return round(float(v), 2)
-        except Exception:
-            return fallback
+    av = to_decimal(request.form.get("price_avulso_24h"), Decimal(str(cfg.price_avulso_24h)))
+    pr = to_decimal(request.form.get("price_premium_mensal"), Decimal(str(cfg.price_premium_mensal)))
 
-    av = to_price(request.form.get("price_avulso_24h"), float(cfg.price_avulso_24h))
-    pr = to_price(request.form.get("price_premium_mensal"), float(cfg.price_premium_mensal))
-
-    cfg.price_avulso_24h = av
-    cfg.price_premium_mensal = pr
+    cfg.price_avulso_24h = av.quantize(Decimal("0.01"))
+    cfg.price_premium_mensal = pr.quantize(Decimal("0.01"))
     db.session.commit()
 
     return redirect(url_for("admin_home"))
@@ -1011,8 +991,8 @@ def admin_grant_premium():
     if not u:
         return redirect(url_for("admin_home"))
 
-    until = now_utc() + timedelta(days=days)
-    u.free_premium_until = until
+    base_dt = u.free_premium_until if u.free_premium_until and u.free_premium_until > now_utc() else now_utc()
+    u.free_premium_until = base_dt + timedelta(days=days)
     db.session.commit()
 
     return redirect(url_for("admin_users"))
