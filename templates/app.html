@@ -1,28 +1,354 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>PromptSheet</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PromptSheet - Seus Projetos</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .topbar {
+      background: #217346;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .brand {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .brand-sub {
+      margin: 4px 0 0 0;
+      font-size: 14px;
+      opacity: 0.92;
+    }
+
+    .topbar a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      border: 1px solid rgba(255,255,255,0.35);
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 32px auto;
+      padding: 0 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 24px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+      border: 1px solid #e5e7eb;
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+
+    .section-title {
+      font-size: 24px;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+
+    .section-text {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #4b5563;
+      margin-bottom: 22px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 14px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      outline: none;
+      transition: 0.2s ease;
+      background: #fff;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      border-color: #217346;
+      box-shadow: 0 0 0 3px rgba(33, 115, 70, 0.12);
+    }
+
+    textarea {
+      min-height: 160px;
+      resize: vertical;
+    }
+
+    .field {
+      margin-bottom: 18px;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 6px;
+    }
+
+    .btn {
+      background: #217346;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #1b5f39;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #217346;
+      border: 1px solid #217346;
+      text-decoration: none;
+      display: inline-block;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    .alert {
+      background: #fff4e5;
+      color: #92400e;
+      border: 1px solid #f3d19c;
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      font-size: 14px;
+    }
+
+    .projects-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .project-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .project-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 16px;
+      background: #fafafa;
+      transition: 0.2s ease;
+    }
+
+    .project-item:hover {
+      border-color: #cbd5e1;
+      background: #ffffff;
+    }
+
+    .project-name {
+      margin: 0 0 8px 0;
+      font-size: 17px;
+      color: #111827;
+    }
+
+    .project-prompt {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #4b5563;
+      white-space: pre-wrap;
+    }
+
+    .project-link {
+      display: inline-block;
+      text-decoration: none;
+      color: #217346;
+      font-weight: 700;
+    }
+
+    .empty {
+      border: 1px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 24px;
+      text-align: center;
+      color: #6b7280;
+      background: #fcfcfc;
+    }
+
+    .examples {
+      margin-top: 20px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .examples h3 {
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .examples ul {
+      padding-left: 18px;
+      margin: 0;
+      color: #4b5563;
+    }
+
+    .examples li {
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .container {
+        margin: 20px auto;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div class="topbar">
+    <div>
+      <p class="brand">PromptSheet</p>
+      <p class="brand-sub">Sua planilha, a um texto de distância.</p>
+    </div>
+    <div>
+      <a href="{{ url_for('logout') }}">Sair</a>
+    </div>
+  </div>
 
-<h2>Seus Projetos</h2>
+  <div class="container">
+    <div class="grid">
+      <div class="card">
+        <h1 class="section-title">Criar novo projeto</h1>
+        <p class="section-text">
+          Dê um nome ao projeto e descreva a planilha que você deseja gerar.
+          Quanto melhor o seu texto, melhor ficará a estrutura da planilha.
+        </p>
 
-{% if projetos %}
-    <ul>
-        {% for p in projetos %}
-            <li>{{ p.nome }}</li>
-        {% endfor %}
-    </ul>
-{% else %}
-    <p>Nenhum projeto ainda.</p>
-{% endif %}
+        {% if erro %}
+          <div class="alert">{{ erro }}</div>
+        {% endif %}
 
-<br>
+        <form method="POST" action="{{ url_for('app_home') }}">
+          <div class="field">
+            <label for="nome">Nome do projeto</label>
+            <input
+              type="text"
+              id="nome"
+              name="nome"
+              placeholder="Ex: Controle de vendas abril"
+              required
+            />
+            <div class="hint">Use um nome simples para identificar sua planilha depois.</div>
+          </div>
 
-<form method="POST" action="/criar">
-    <textarea name="prompt" placeholder="Descreva sua planilha"></textarea><br><br>
-    <button type="submit">Gerar Planilha</button>
-</form>
+          <div class="field">
+            <label for="prompt">Descreva sua planilha</label>
+            <textarea
+              id="prompt"
+              name="prompt"
+              placeholder="Ex: Quero uma planilha de vendas com colunas Data, Cliente, Produto, Quantidade, Preço Unitário e Valor Total."
+            ></textarea>
+            <div class="hint">
+              Você pode informar o tipo da planilha e também as colunas exatas.
+            </div>
+          </div>
 
+          <button class="btn" type="submit">Criar projeto</button>
+        </form>
+
+        <div class="examples">
+          <h3>Exemplos de prompt</h3>
+          <ul>
+            <li>Planilha de vendas com colunas: Data, Cliente, Produto, Quantidade, Preço Unitário, Valor Total.</li>
+            <li>Planilha de estoque com colunas: Data, Produto, Categoria, Quantidade, Estoque Mínimo, Fornecedor.</li>
+            <li>Fluxo de caixa com colunas: Data, Descrição, Categoria, Entrada, Saída, Saldo.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="projects-header">
+          <div>
+            <h2 class="section-title" style="margin-bottom: 4px;">Seus projetos</h2>
+            <p class="section-text" style="margin-bottom: 0;">
+              Acesse seus projetos criados e continue de onde parou.
+            </p>
+          </div>
+        </div>
+
+        {% if projetos %}
+          <div class="project-list">
+            {% for projeto in projetos %}
+              <div class="project-item">
+                <h3 class="project-name">{{ projeto.nome }}</h3>
+                <p class="project-prompt">
+                  {{ projeto.prompt if projeto.prompt else "Projeto criado sem descrição." }}
+                </p>
+                <a class="project-link" href="{{ url_for('projeto_view', projeto_id=projeto.id) }}">
+                  Abrir projeto →
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty">
+            <p style="margin: 0 0 8px 0; font-weight: bold;">Nenhum projeto ainda.</p>
+            <p style="margin: 0;">Crie seu primeiro projeto no formulário ao lado.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </body>
 </html>
