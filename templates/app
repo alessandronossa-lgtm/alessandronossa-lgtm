@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PromptSheet</title>
+</head>
+<body>
+
+<h2>Seus Projetos</h2>
+
+{% if projetos %}
+    <ul>
+        {% for p in projetos %}
+            <li>{{ p.nome }}</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Nenhum projeto ainda.</p>
+{% endif %}
+
+<br>
+
+<form method="POST" action="/criar">
+    <textarea name="prompt" placeholder="Descreva sua planilha"></textarea><br><br>
+    <button type="submit">Gerar Planilha</button>
+</form>
+
+</body>
+</html>
