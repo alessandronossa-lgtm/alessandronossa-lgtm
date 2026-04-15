@@ -74,8 +74,8 @@ class Config(db.Model):
     __tablename__ = "config"
 
     id = db.Column(db.Integer, primary_key=True)
-    price_avulso_24h = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("9.90"))
-    price_premium_mensal = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("19.90"))
+    price_avulso_24h = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("1.00"))
+    price_premium_mensal = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("1.90"))
     updated_at = db.Column(db.DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 
 
