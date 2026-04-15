@@ -139,17 +139,15 @@
         <div class="alert success">{{ sucesso }}</div>
       {% endif %}
 
-      <div class="actions">
-        <form method="POST" action="{{ url_for('gerar_planilha', projeto_id=projeto.id) }}">
-          <button class="btn" type="submit">Gerar e baixar planilha</button>
-        </form>
+     <div class="actions">
+  <a class="btn" href="{{ url_for('download_projeto', projeto_id=projeto.id) }}">
+    Gerar e baixar planilha
+  </a>
 
-        <br><br>
-
-        <a class="btn-secondary" href="{{ url_for('app_home') }}">
-          Voltar para projetos
-        </a>
-      </div>
+  <a class="btn-secondary" href="{{ url_for('app_home') }}">
+    Voltar para projetos
+  </a>
+</div>
     </div>
 
   </div>
