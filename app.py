@@ -142,7 +142,7 @@ with app.app_context():
 def get_config() -> Config:
     cfg = db.session.get(Config, 1)
     if not cfg:
-        cfg = Config(id=1, price_avulso_24h=Decimal("9.90"), price_premium_mensal=Decimal("19.90"))
+        cfg = Config(id=1, price_avulso_24h=Decimal("1.00"), price_premium_mensal=Decimal("1.90"))
         db.session.add(cfg)
         db.session.commit()
     return cfg
