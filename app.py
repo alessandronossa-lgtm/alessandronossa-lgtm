@@ -726,6 +726,7 @@ def comprar_diaria(projeto_id):
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
     if u.premium_ativo():
+        print("LOG comprar_diaria: usuário já é premium", flush=True)
         return jsonify({"erro": "Você já é Premium."}), 400
 
     avulso_price, _ = get_prices()
@@ -757,21 +758,31 @@ def comprar_diaria(projeto_id):
         "statement_descriptor": "PROMPTSHEET"
     }
 
+    print("LOG comprar_diaria: iniciou", flush=True)
+    print(f"LOG comprar_diaria: user_id={u.id} projeto_id={p.id} email={u.email}", flush=True)
+    print(f"LOG comprar_diaria: preference_data={json.dumps(preference_data, ensure_ascii=False, default=str)}", flush=True)
+
     response = sdk.preference().create(preference_data)
 
-    print("MP preference response:", json.dumps(response, ensure_ascii=False, default=str))
+    print(f"LOG comprar_diaria: response={json.dumps(response, ensure_ascii=False, default=str)}", flush=True)
 
     mp_resp = response.get("response", {})
     init_point = mp_resp.get("init_point")
     sandbox_init_point = mp_resp.get("sandbox_init_point")
 
     if not init_point and not sandbox_init_point:
+        print("LOG comprar_diaria: não gerou init_point", flush=True)
         return jsonify({
             "erro": "Não foi possível gerar o link de pagamento.",
             "detalhes": response
         }), 500
 
-    return jsonify({"init_point": init_point or sandbox_init_point})
+    final_link = init_point or sandbox_init_point
+    print(f"LOG comprar_diaria: final_link={final_link}", flush=True)
+
+    return jsonify({"init_point": final_link})
+
+
 
 
 @app.route("/pendente/<int:projeto_id>")
