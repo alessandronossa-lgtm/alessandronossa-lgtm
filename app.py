@@ -146,12 +146,13 @@ def get_config() -> Config:
         cfg = Config(id=1)
         db.session.add(cfg)
 
-    # 🔥 FORÇA os valores para teste
+    # Valores forçados para teste
     cfg.price_avulso_24h = Decimal("1.00")
     cfg.price_premium_mensal = Decimal("1.90")
 
     db.session.commit()
     return cfg
+
 
 def get_prices():
     cfg = get_config()
@@ -687,6 +688,10 @@ def premium_assinar():
     }
 
     r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=30)
+
+    print("MP preapproval status:", r.status_code)
+    print("MP preapproval body:", r.text)
+
     if r.status_code >= 400:
         return jsonify({"erro": "Falha ao criar assinatura.", "detalhes": r.text}), 500
 
@@ -727,13 +732,19 @@ def comprar_diaria(projeto_id):
     external_reference = f"user:{u.id}|project:{p.id}|kind:daily"
 
     preference_data = {
-        "items": [{
-            "title": f"Acesso 24h - Projeto {p.nome}",
-            "quantity": 1,
-            "currency_id": "BRL",
-            "unit_price": float(avulso_price)
-        }],
-        "payer": {"email": u.email},
+        "items": [
+            {
+                "id": f"project-{p.id}",
+                "title": f"Acesso 24h - Projeto {p.nome}",
+                "description": f"Acesso temporário ao projeto {p.nome}",
+                "quantity": 1,
+                "currency_id": "BRL",
+                "unit_price": float(avulso_price)
+            }
+        ],
+        "payer": {
+            "email": u.email
+        },
         "external_reference": external_reference,
         "notification_url": f"{base_url()}/webhook",
         "back_urls": {
@@ -741,16 +752,26 @@ def comprar_diaria(projeto_id):
             "failure": f"{base_url()}/pendente/{p.id}",
             "pending": f"{base_url()}/pendente/{p.id}",
         },
-        "auto_return": "all"
+        "auto_return": "approved",
+        "binary_mode": False,
+        "statement_descriptor": "PROMPTSHEET"
     }
 
     response = sdk.preference().create(preference_data)
-    init_point = response.get("response", {}).get("init_point")
 
-    if not init_point:
-        return jsonify({"erro": "Não foi possível gerar o link de pagamento.", "detalhes": response}), 500
+    print("MP preference response:", json.dumps(response, ensure_ascii=False, default=str))
 
-    return jsonify({"init_point": init_point})
+    mp_resp = response.get("response", {})
+    init_point = mp_resp.get("init_point")
+    sandbox_init_point = mp_resp.get("sandbox_init_point")
+
+    if not init_point and not sandbox_init_point:
+        return jsonify({
+            "erro": "Não foi possível gerar o link de pagamento.",
+            "detalhes": response
+        }), 500
+
+    return jsonify({"init_point": init_point or sandbox_init_point})
 
 
 @app.route("/pendente/<int:projeto_id>")
@@ -837,6 +858,8 @@ def handle_payment(payment_id: str):
     payment = pay_resp.get("response", {})
     status = (payment.get("status") or "").lower()
 
+    print("MP payment fetched:", json.dumps(payment, ensure_ascii=False, default=str))
+
     if status != "approved":
         return
 
@@ -886,6 +909,10 @@ def handle_preapproval(preapproval_id: str):
     url = f"https://api.mercadopago.com/preapproval/{preapproval_id}"
     headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
     r = requests.get(url, headers=headers, timeout=30)
+
+    print("MP preapproval fetch status:", r.status_code)
+    print("MP preapproval fetch body:", r.text)
+
     if r.status_code >= 400:
         return
 
@@ -918,6 +945,8 @@ def handle_preapproval(preapproval_id: str):
 def webhook():
     try:
         event_type, event_id = parse_webhook_event()
+
+        print("Webhook recebido:", event_type, event_id)
 
         if not event_type or not event_id:
             return jsonify({"status": "ignored"}), 200
