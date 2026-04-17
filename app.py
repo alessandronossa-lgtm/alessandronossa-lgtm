@@ -615,9 +615,35 @@ def app_home():
     return render_template("app.html", usuario=u, projetos=projetos)
 
 
+
+
 @app.route("/projeto/<int:projeto_id>")
 @login_required
 def projeto_view(projeto_id):
+
+
+
+@app.route("/projeto/<int:projeto_id>/atualizar", methods=["POST"])
+@login_required
+def atualizar_projeto(projeto_id):
+    u = current_user()
+    p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
+
+    # verifica se ainda tem acesso (24h)
+    if not p.tem_acesso(u):
+        return "Acesso expirado", 403
+
+    nova_descricao = request.form.get("descricao")
+
+    if nova_descricao:
+        p.descricao = nova_descricao
+        db.session.commit()
+
+    return redirect(url_for("projeto_view", projeto_id=p.id))
+
+    
+
+    
     u = current_user()
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
