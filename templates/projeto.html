@@ -269,10 +269,25 @@
         ou escolher uma forma de acesso.
       </p>
 
-      <h3>Descrição do projeto</h3>
-      <div class="prompt-box">
-        {{ projeto.prompt if projeto.prompt else "Projeto criado sem descrição." }}
-      </div>
+     <h3>Descrição do projeto</h3>
+
+<div class="descricao">
+    {{ projeto.descricao }}
+</div>
+
+<h3 style="margin-top: 30px;">Ajustar planilha</h3>
+
+<form method="POST" action="{{ url_for('atualizar_projeto', projeto_id=projeto.id) }}">
+    <textarea name="descricao" rows="4" style="width:100%; padding:10px;">
+        {{ projeto.descricao }}
+    </textarea>
+
+    <br><br>
+
+    <button type="submit" style="background:#217346; color:white; padding:10px 20px; border:none; border-radius:5px;">
+        Atualizar e gerar nova versão
+    </button>
+</form>
 
       <div class="badge-row">
         {% if premium %}
