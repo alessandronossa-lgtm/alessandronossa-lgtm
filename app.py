@@ -648,33 +648,6 @@ def projeto_view(projeto_id):
     )
 
 
-@app.route("/projeto/<int:projeto_id>/atualizar", methods=["POST"])
-@login_required
-def atualizar_projeto(projeto_id):
-    u = current_user()
-    p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
-
-    premium = u.premium_ativo()
-
-    acesso = AcessoProjeto.query.filter_by(
-        user_id=u.id, projeto_id=p.id
-    ).order_by(AcessoProjeto.expires_at.desc()).first()
-
-    acesso_ativo = False
-    if acesso and acesso.expires_at > now_utc():
-        acesso_ativo = True
-
-    if not premium and not acesso_ativo:
-        return "Acesso expirado", 403
-
-    novo_prompt = (request.form.get("prompt") or "").strip()
-
-    if novo_prompt:
-        p.prompt = novo_prompt
-        db.session.commit()
-
-    return redirect(url_for("projeto_view", projeto_id=p.id))
-    
 
 
 @app.route("/projeto/<int:projeto_id>/atualizar", methods=["POST"])
@@ -703,35 +676,8 @@ def atualizar_projeto(projeto_id):
         db.session.commit()
 
     return redirect(url_for("projeto_view", projeto_id=p.id))
-    
 
-    
-    u = current_user()
-    p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
-    premium = u.premium_ativo()
-    avulso_price, premium_price = get_prices()
-
-    acesso = AcessoProjeto.query.filter_by(
-        user_id=u.id, projeto_id=p.id
-    ).order_by(AcessoProjeto.expires_at.desc()).first()
-
-    acesso_ativo = False
-    expira_em = None
-    if acesso and acesso.expires_at > now_utc():
-        acesso_ativo = True
-        expira_em = acesso.expires_at
-
-    return render_template(
-        "projeto.html",
-        usuario=u,
-        projeto=p,
-        premium=premium,
-        acesso_ativo=acesso_ativo,
-        expira_em=expira_em,
-        price_avulso=avulso_price,
-        price_premium=premium_price
-    )
 
 
 # =====================================================
