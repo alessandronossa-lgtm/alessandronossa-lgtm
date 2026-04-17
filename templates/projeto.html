@@ -278,9 +278,7 @@
 <h3 style="margin-top: 30px;">Ajustar planilha</h3>
 
 <form method="POST" action="{{ url_for('atualizar_projeto', projeto_id=projeto.id) }}">
-    <textarea name="descricao" rows="4" style="width:100%; padding:10px;">
-        {{ projeto.descricao }}
-    </textarea>
+    <textarea name="prompt" rows="4" style="width:100%; padding:10px;">{{ projeto.prompt }}</textarea>
 
     <br><br>
 
