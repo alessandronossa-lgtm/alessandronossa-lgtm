@@ -272,9 +272,9 @@
      <h3>Descrição do projeto</h3>
 
 <div class="descricao">
-    {{ projeto.descricao }}
+    {{ projeto.prompt }}
 </div>
-
+      
 <h3 style="margin-top: 30px;">Ajustar planilha</h3>
 
 <form method="POST" action="{{ url_for('atualizar_projeto', projeto_id=projeto.id) }}">
