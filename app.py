@@ -629,18 +629,26 @@ def atualizar_projeto(projeto_id):
     u = current_user()
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
-    # verifica se ainda tem acesso (24h)
-    if not p.tem_acesso(u):
+    premium = u.premium_ativo()
+
+    acesso = AcessoProjeto.query.filter_by(
+        user_id=u.id, projeto_id=p.id
+    ).order_by(AcessoProjeto.expires_at.desc()).first()
+
+    acesso_ativo = False
+    if acesso and acesso.expires_at > now_utc():
+        acesso_ativo = True
+
+    if not premium and not acesso_ativo:
         return "Acesso expirado", 403
 
-    nova_descricao = request.form.get("descricao")
+    novo_prompt = (request.form.get("prompt") or "").strip()
 
-    if nova_descricao:
-        p.descricao = nova_descricao
+    if novo_prompt:
+        p.prompt = novo_prompt
         db.session.commit()
 
     return redirect(url_for("projeto_view", projeto_id=p.id))
-
     
 
     
