@@ -85,6 +85,24 @@
       white-space: pre-wrap;
       color: #374151;
       line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
+    .edit-textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: Arial, Helvetica, sans-serif;
+      resize: vertical;
+      outline: none;
+    }
+
+    .edit-textarea:focus {
+      border-color: #217346;
+      box-shadow: 0 0 0 3px rgba(33, 115, 70, 0.12);
     }
 
     .badge-row {
@@ -238,6 +256,12 @@
       color: #6b7280;
     }
 
+    .section-divider {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 24px 0;
+    }
+
     @media (max-width: 820px) {
       .offer-grid {
         grid-template-columns: 1fr;
@@ -265,27 +289,14 @@
     <div class="card">
       <h1>{{ projeto.nome }}</h1>
       <p class="subtitle">
-        Revise abaixo a descrição do seu projeto. Quando estiver tudo certo, você poderá baixar a planilha
-        ou escolher uma forma de acesso.
+        Revise abaixo a descrição do seu projeto. Você pode ajustar o texto e gerar novas versões da planilha
+        enquanto seu acesso estiver ativo.
       </p>
 
-     <h3>Descrição do projeto</h3>
-
-<div class="descricao">
-    {{ projeto.prompt }}
-</div>
-      
-<h3 style="margin-top: 30px;">Ajustar planilha</h3>
-
-<form method="POST" action="{{ url_for('atualizar_projeto', projeto_id=projeto.id) }}">
-    <textarea name="prompt" rows="4" style="width:100%; padding:10px;">{{ projeto.prompt }}</textarea>
-
-    <br><br>
-
-    <button type="submit" style="background:#217346; color:white; padding:10px 20px; border:none; border-radius:5px;">
-        Atualizar e gerar nova versão
-    </button>
-</form>
+      <h3>Descrição atual do projeto</h3>
+      <div class="prompt-box">
+        {{ projeto.prompt if projeto.prompt else "Projeto criado sem descrição." }}
+      </div>
 
       <div class="badge-row">
         {% if premium %}
@@ -300,6 +311,24 @@
           <span class="badge badge-warn">Aguardando liberação de acesso</span>
         {% endif %}
       </div>
+
+      <div class="section-divider"></div>
+
+      <h3>Ajustar planilha</h3>
+      <p class="subtitle">
+        Edite o texto abaixo para refinar sua planilha. Exemplo:
+        <strong>“o cabeçalho deve ficar vermelho”</strong>,
+        <strong>“adicionar coluna comissão”</strong> ou
+        <strong>“remover a coluna fornecedor”</strong>.
+      </p>
+
+      <form method="POST" action="{{ url_for('atualizar_projeto', projeto_id=projeto.id) }}">
+        <textarea class="edit-textarea" name="prompt" rows="6">{{ projeto.prompt }}</textarea>
+
+        <div class="actions">
+          <button type="submit" class="btn">Salvar ajustes</button>
+        </div>
+      </form>
     </div>
 
     <div class="card">
