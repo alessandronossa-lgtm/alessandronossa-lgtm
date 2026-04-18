@@ -229,6 +229,23 @@ def unique_columns(columns):
     return final
 
 
+def detectar_cor_cabecalho(prompt: str) -> str:
+    prompt = (prompt or "").lower()
+
+    if "vermelho" in prompt:
+        return "FF0000"
+    elif "verde" in prompt:
+        return "00B050"
+    elif "preto" in prompt:
+        return "000000"
+    elif "cinza" in prompt:
+        return "808080"
+    elif "azul" in prompt:
+        return "1F4E78"
+
+    return "1F4E78"
+
+
 def split_candidate_columns(text: str):
     text = (text or "").replace("\n", ", ")
     text = re.sub(r"\s+e\s+", ", ", text, flags=re.IGNORECASE)
@@ -318,11 +335,6 @@ def is_integer_column(name: str) -> bool:
     return any(k in n for k in keys)
 
 
-def has_column(columns, target):
-    target_n = normalize_text(target)
-    return any(normalize_text(c) == target_n for c in columns)
-
-
 def col_index(columns, target):
     target_n = normalize_text(target)
     for idx, col in enumerate(columns, start=1):
@@ -385,7 +397,7 @@ def value_for_column(col_name: str, row_number: int):
 
 
 def style_sheet(ws, columns, prompt, project_name):
-    blue = "1F4E78"
+    header_color = detectar_cor_cabecalho(prompt)
     dark = "0F243E"
     light_fill = "F7FBFF"
     total_fill = "FFF2CC"
@@ -404,8 +416,10 @@ def style_sheet(ws, columns, prompt, project_name):
 
     ws["A1"] = "PromptSheet"
     ws["A1"].font = Font(size=18, bold=True, color=dark)
+
     ws["A2"] = f"Projeto: {project_name}"
-    ws["A2"].font = Font(size=11, bold=True, color=blue)
+    ws["A2"].font = Font(size=11, bold=True, color=header_color)
+
     ws["A3"] = f"Prompt: {prompt or ''}"
     ws["A3"].font = Font(size=10, italic=True, color="666666")
     ws["A3"].alignment = Alignment(wrap_text=True)
@@ -414,7 +428,7 @@ def style_sheet(ws, columns, prompt, project_name):
     for idx, col in enumerate(columns, start=1):
         cell = ws.cell(row=header_row, column=idx, value=col)
         cell.font = Font(bold=True, color=white)
-        cell.fill = PatternFill("solid", fgColor=blue)
+        cell.fill = PatternFill("solid", fgColor=header_color)
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = border
 
@@ -615,8 +629,6 @@ def app_home():
     return render_template("app.html", usuario=u, projetos=projetos)
 
 
-
-
 @app.route("/projeto/<int:projeto_id>")
 @login_required
 def projeto_view(projeto_id):
@@ -648,8 +660,6 @@ def projeto_view(projeto_id):
     )
 
 
-
-
 @app.route("/projeto/<int:projeto_id>/atualizar", methods=["POST"])
 @login_required
 def atualizar_projeto(projeto_id):
@@ -676,8 +686,6 @@ def atualizar_projeto(projeto_id):
         db.session.commit()
 
     return redirect(url_for("projeto_view", projeto_id=p.id))
-
-
 
 
 # =====================================================
@@ -815,8 +823,6 @@ def comprar_diaria(projeto_id):
     print(f"LOG comprar_diaria: final_link={final_link}", flush=True)
 
     return jsonify({"init_point": final_link})
-
-
 
 
 @app.route("/pendente/<int:projeto_id>")
