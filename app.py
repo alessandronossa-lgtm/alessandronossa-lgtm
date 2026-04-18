@@ -217,6 +217,39 @@ def clean_column_name(name: str) -> str:
         return ""
     return name[:40]
 
+def normalizar_nome_coluna(name: str) -> str:
+    n = normalize_text(name)
+
+    if "placa" in n:
+        return "Placa"
+    if "modelo" in n:
+        return "Modelo"
+    if n in ("km", "quilometragem") or "km " in n or " km" in n:
+        return "Km"
+    if "cliente" in n:
+        return "Cliente"
+    if "produto" in n:
+        return "Produto"
+    if "quantidade" in n or n == "qtd":
+        return "Quantidade"
+    if "preco unitario" in n or "preço unitário" in n:
+        return "Preço Unitário"
+    if "valor total" in n:
+        return "Valor Total"
+    if "data" == n:
+        return "Data"
+    if "descricao" in n or "descrição" in n:
+        return "Descrição"
+    if "fornecedor" in n:
+        return "Fornecedor"
+    if "categoria" in n:
+        return "Categoria"
+    if "estoque minimo" in n or "estoque mínimo" in n:
+        return "Estoque Mínimo"
+
+    return name.strip().title()
+
+
 
 def unique_columns(columns):
     seen = set()
@@ -262,35 +295,35 @@ def extract_explicit_columns(prompt: str):
 
     patterns = [
         r"colunas?\s*[:\-]\s*(.+)",
+        r"colunas?\s+de\s+(.+)",
         r"deve ter\s+colunas?\s*[:\-]?\s*(.+)",
         r"nela deve ter\s+colunas?\s*[:\-]?\s*(.+)",
         r"campos?\s*[:\-]\s*(.+)",
+        r"campos?\s+de\s+(.+)",
     ]
 
     for pattern in patterns:
         match = re.search(pattern, prompt_clean, flags=re.IGNORECASE)
         if match:
             tail = match.group(1)
-            tail = re.split(r"\.|\n", tail)[0]
+
+            tail = re.split(
+                r"\.|\n|gostaria|quero que|quero também|tambem|com cabeçalho|com cabecalho|deixar|ficar",
+                tail,
+                flags=re.IGNORECASE
+            )[0]
+
             cols = split_candidate_columns(tail)
             if cols:
-                return unique_columns([c.title() for c in cols])
-
-    found = re.findall(r"coluna\s+([a-zA-ZÀ-ÿ0-9 _/-]+)", prompt_clean, flags=re.IGNORECASE)
-    if found:
-        cols = []
-        for item in found:
-            item = re.split(r",|\.|\n", item)[0]
-            item = clean_column_name(item)
-            if item:
-                cols.append(item.title())
-        return unique_columns(cols)
+                return unique_columns([normalizar_nome_coluna(c) for c in cols])
 
     return []
 
-
 def infer_columns_from_prompt(prompt: str):
     p = normalize_text(prompt)
+
+    if any(k in p for k in ["veiculo", "veiculos", "frota", "carro", "carros", "moto", "motos"]):
+        return ["Placa", "Modelo", "Km"]
 
     if any(k in p for k in ["estoque", "inventario", "almoxarifado"]):
         return ["Data", "Produto", "Categoria", "Quantidade", "Estoque Mínimo", "Fornecedor"]
@@ -314,7 +347,6 @@ def infer_columns_from_prompt(prompt: str):
         return ["Nome", "Cargo", "Telefone", "E-mail", "Cidade", "Observação"]
 
     return ["Data", "Descrição", "Valor"]
-
 
 def detect_columns(prompt: str):
     explicit = extract_explicit_columns(prompt)
