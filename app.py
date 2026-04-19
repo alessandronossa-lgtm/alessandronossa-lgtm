@@ -146,7 +146,7 @@ def get_config() -> Config:
         cfg = Config(id=1)
         db.session.add(cfg)
 
-    # Valores forçados para teste
+    # valores forçados para teste
     cfg.price_avulso_24h = Decimal("1.00")
     cfg.price_premium_mensal = Decimal("1.90")
 
@@ -217,6 +217,7 @@ def clean_column_name(name: str) -> str:
         return ""
     return name[:40]
 
+
 def normalizar_nome_coluna(name: str) -> str:
     n = normalize_text(name)
 
@@ -236,7 +237,7 @@ def normalizar_nome_coluna(name: str) -> str:
         return "Preço Unitário"
     if "valor total" in n:
         return "Valor Total"
-    if "data" == n:
+    if n == "data":
         return "Data"
     if "descricao" in n or "descrição" in n:
         return "Descrição"
@@ -246,9 +247,28 @@ def normalizar_nome_coluna(name: str) -> str:
         return "Categoria"
     if "estoque minimo" in n or "estoque mínimo" in n:
         return "Estoque Mínimo"
+    if "forma de pagamento" in n:
+        return "Forma de Pagamento"
+    if "status" in n:
+        return "Status"
+    if "entrada" in n:
+        return "Entrada"
+    if "saida" in n or "saída" in n:
+        return "Saída"
+    if "saldo" in n:
+        return "Saldo"
+    if "telefone" in n:
+        return "Telefone"
+    if "e-mail" in n or "email" in n:
+        return "E-mail"
+    if "cidade" in n:
+        return "Cidade"
+    if "cargo" in n:
+        return "Cargo"
+    if "nome" in n:
+        return "Nome"
 
     return name.strip().title()
-
 
 
 def unique_columns(columns):
@@ -263,20 +283,32 @@ def unique_columns(columns):
 
 
 def detectar_cor_cabecalho(prompt: str) -> str:
-    prompt = (prompt or "").lower()
+    prompt = normalize_text(prompt)
 
     if "vermelho" in prompt:
         return "FF0000"
-    elif "verde" in prompt:
+    if "verde" in prompt:
         return "00B050"
-    elif "preto" in prompt:
+    if "preto" in prompt:
         return "000000"
-    elif "cinza" in prompt:
+    if "cinza" in prompt:
         return "808080"
-    elif "azul" in prompt:
+    if "azul" in prompt:
         return "1F4E78"
 
     return "1F4E78"
+
+
+def detectar_sem_totais(prompt: str) -> bool:
+    p = normalize_text(prompt)
+    termos = [
+        "sem linha de totais",
+        "sem totais",
+        "nao mostrar totais",
+        "não mostrar totais",
+        "sem total",
+    ]
+    return any(t in p for t in termos)
 
 
 def split_candidate_columns(text: str):
@@ -285,7 +317,6 @@ def split_candidate_columns(text: str):
     text = text.replace(";", ",").replace("|", ",")
     parts = [clean_column_name(p) for p in text.split(",")]
     return [p for p in parts if p]
-
 
 
 def extract_explicit_columns(prompt: str):
@@ -308,10 +339,8 @@ def extract_explicit_columns(prompt: str):
         if match:
             tail = match.group(1)
 
-            # corta quando começam instruções extras
             tail = re.split(
-                r"\.|\n|gostaria|quero que|quero também|quero tambem|tambem|também|"
-                r"mudar|alterar|trocar|deixar|ficar|cabeçalho|cabecalho|cor|fonte|titulo|título",
+                r"\.|\n|gostaria|quero que|quero também|quero tambem|tambem|também|mudar|alterar|trocar|deixar|ficar|cabeçalho|cabecalho|cor|fonte|titulo|título",
                 tail,
                 maxsplit=1,
                 flags=re.IGNORECASE
@@ -322,7 +351,7 @@ def extract_explicit_columns(prompt: str):
                 return unique_columns([normalizar_nome_coluna(c) for c in cols])
 
     return []
-              
+
 
 def infer_columns_from_prompt(prompt: str):
     p = normalize_text(prompt)
@@ -353,6 +382,7 @@ def infer_columns_from_prompt(prompt: str):
 
     return ["Data", "Descrição", "Valor"]
 
+
 def detect_columns(prompt: str):
     explicit = extract_explicit_columns(prompt)
     if explicit:
@@ -362,13 +392,13 @@ def detect_columns(prompt: str):
 
 def is_money_column(name: str) -> bool:
     n = normalize_text(name)
-    keys = ["preco", "valor", "entrada", "saida", "saldo", "custo", "total"]
+    keys = ["preco", "valor", "entrada", "saida", "saída", "saldo", "custo", "total"]
     return any(k in n for k in keys)
 
 
 def is_integer_column(name: str) -> bool:
     n = normalize_text(name)
-    keys = ["quantidade", "qtd", "estoque", "minimo"]
+    keys = ["quantidade", "qtd", "estoque", "minimo", "mínimo", "km", "quilometragem"]
     return any(k in n for k in keys)
 
 
@@ -411,6 +441,12 @@ def value_for_column(col_name: str, row_number: int):
         return f"Nome Exemplo {row_number - 5}"
     if name == "cargo":
         return "Vendedor"
+    if name == "placa":
+        return "ABC1D23" if row_number == 6 else "XYZ9K87"
+    if name == "modelo":
+        return "Strada" if row_number == 6 else "Hilux"
+    if name == "km":
+        return 45230 if row_number == 6 else 78110
 
     if name in ("quantidade", "qtd"):
         return 2 if row_number == 6 else 3
@@ -424,13 +460,24 @@ def value_for_column(col_name: str, row_number: int):
         return 150.0 if row_number == 6 else 90.0
     if name == "entrada":
         return 500.0 if row_number == 6 else 0.0
-    if name == "saida":
+    if name == "saida" or name == "saída":
         return 0.0 if row_number == 6 else 120.0
 
     if name in ("valor total", "saldo"):
         return None
 
     return ""
+
+
+def aplicar_largura_automatica(ws, columns):
+    for idx, col in enumerate(columns, start=1):
+        letter = get_column_letter(idx)
+        max_len = len(str(col))
+        for row in range(1, ws.max_row + 1):
+            val = ws.cell(row=row, column=idx).value
+            if val is not None:
+                max_len = max(max_len, len(str(val)))
+        ws.column_dimensions[letter].width = min(max(max_len + 3, 12), 30)
 
 
 def style_sheet(ws, columns, prompt, project_name):
@@ -472,11 +519,7 @@ def style_sheet(ws, columns, prompt, project_name):
     ws.freeze_panes = "A6"
     ws.auto_filter.ref = f"A5:{get_column_letter(len(columns))}5"
 
-    for idx, col in enumerate(columns, start=1):
-        width = max(len(col) + 4, 14)
-        ws.column_dimensions[get_column_letter(idx)].width = min(width, 28)
-
-    for row in range(6, 50):
+    for row in range(6, 60):
         for col in range(1, len(columns) + 1):
             cell = ws.cell(row=row, column=col)
             cell.border = border
@@ -492,24 +535,25 @@ def style_sheet(ws, columns, prompt, project_name):
             for row in range(6, 200):
                 ws.cell(row=row, column=idx).number_format = '0'
 
-    total_row = 8
-    ws.cell(row=total_row, column=1, value="Totais")
-    ws.cell(row=total_row, column=1).font = Font(bold=True)
-    ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor=total_fill)
-    ws.cell(row=total_row, column=1).border = border
+    if not detectar_sem_totais(prompt):
+        total_row = 8
+        ws.cell(row=total_row, column=1, value="Totais")
+        ws.cell(row=total_row, column=1).font = Font(bold=True)
+        ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor=total_fill)
+        ws.cell(row=total_row, column=1).border = border
 
-    for idx, col in enumerate(columns, start=2):
-        n = normalize_text(col)
-        letter = get_column_letter(idx)
-        cell = ws.cell(row=total_row, column=idx)
-        cell.font = Font(bold=True)
-        cell.fill = PatternFill("solid", fgColor=total_fill)
-        cell.border = border
+        for idx, col in enumerate(columns, start=2):
+            n = normalize_text(col)
+            letter = get_column_letter(idx)
+            cell = ws.cell(row=total_row, column=idx)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill("solid", fgColor=total_fill)
+            cell.border = border
 
-        if any(k in n for k in ["quantidade", "valor", "entrada", "saida", "preco", "custo", "estoque"]):
-            cell.value = f"=SUM({letter}6:{letter}7)"
-        elif n == "saldo":
-            cell.value = f"={letter}7"
+            if any(k in n for k in ["quantidade", "valor", "entrada", "saida", "saída", "preco", "custo", "estoque", "km"]):
+                cell.value = f"=SUM({letter}6:{letter}7)"
+            elif n == "saldo":
+                cell.value = f"={letter}7"
 
     ws.row_dimensions[1].height = 26
     ws.row_dimensions[3].height = 34
@@ -550,15 +594,7 @@ def fill_example_data(ws, columns):
                 ws.cell(row=row, column=idx, value=value)
 
     apply_formulas(ws, columns)
-
-    for idx, col in enumerate(columns, start=1):
-        letter = get_column_letter(idx)
-        max_len = len(str(col))
-        for row in range(6, 9):
-            val = ws.cell(row=row, column=idx).value
-            if val is not None:
-                max_len = max(max_len, len(str(val)))
-        ws.column_dimensions[letter].width = min(max(max_len + 3, 14), 30)
+    aplicar_largura_automatica(ws, columns)
 
 
 def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
