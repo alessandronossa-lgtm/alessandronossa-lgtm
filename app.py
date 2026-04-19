@@ -287,6 +287,7 @@ def split_candidate_columns(text: str):
     return [p for p in parts if p]
 
 
+
 def extract_explicit_columns(prompt: str):
     if not prompt:
         return []
@@ -307,9 +308,12 @@ def extract_explicit_columns(prompt: str):
         if match:
             tail = match.group(1)
 
+            # corta quando começam instruções extras
             tail = re.split(
-                r"\.|\n|gostaria|quero que|quero também|tambem|com cabeçalho|com cabecalho|deixar|ficar",
+                r"\.|\n|gostaria|quero que|quero também|quero tambem|tambem|também|"
+                r"mudar|alterar|trocar|deixar|ficar|cabeçalho|cabecalho|cor|fonte|titulo|título",
                 tail,
+                maxsplit=1,
                 flags=re.IGNORECASE
             )[0]
 
@@ -318,6 +322,7 @@ def extract_explicit_columns(prompt: str):
                 return unique_columns([normalizar_nome_coluna(c) for c in cols])
 
     return []
+              
 
 def infer_columns_from_prompt(prompt: str):
     p = normalize_text(prompt)
