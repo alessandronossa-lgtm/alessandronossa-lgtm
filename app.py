@@ -535,45 +535,50 @@ def style_sheet(ws, columns, prompt, project_name):
             for row in range(6, 200):
                 ws.cell(row=row, column=idx).number_format = '0'
 
-
-colunas_com_total = []
-for idx, col in enumerate(columns, start=1):
-    n = normalize_text(col)
-
-    if any(k in n for k in ["quantidade", "valor", "valor total", "entrada", "saida", "saída", "preco", "preço", "custo", "saldo", "estoque"]):
-        colunas_com_total.append((idx, col))
-
-if not detectar_sem_totais(prompt) and colunas_com_total:
-    total_row = 8
-
-    ws.cell(row=total_row, column=1, value="Totais")
-    ws.cell(row=total_row, column=1).font = Font(bold=True)
-    ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor=total_fill)
-    ws.cell(row=total_row, column=1).border = border
-
-    for idx in range(2, len(columns) + 1):
-        cell = ws.cell(row=total_row, column=idx)
-        cell.fill = PatternFill("solid", fgColor=total_fill)
-        cell.border = border
-        cell.font = Font(bold=True)
-
-    for idx, col in colunas_com_total:
+    # 🔥 NOVA LÓGICA INTELIGENTE DE TOTAIS
+    colunas_com_total = []
+    for idx, col in enumerate(columns, start=1):
         n = normalize_text(col)
-        letter = get_column_letter(idx)
-        cell = ws.cell(row=total_row, column=idx)
 
-        if n == "saldo":
-            cell.value = f"={letter}7"
-        else:
-            cell.value = f"=SUM({letter}6:{letter}7)"
+        if any(k in n for k in [
+            "quantidade", "valor", "valor total",
+            "entrada", "saida", "saída",
+            "preco", "preço", "custo",
+            "saldo", "estoque"
+        ]):
+            colunas_com_total.append((idx, col))
 
+    if not detectar_sem_totais(prompt) and colunas_com_total:
+        total_row = 8
 
-    
+        ws.cell(row=total_row, column=1, value="Totais")
+        ws.cell(row=total_row, column=1).font = Font(bold=True)
+        ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor=total_fill)
+        ws.cell(row=total_row, column=1).border = border
+
+        for idx in range(2, len(columns) + 1):
+            cell = ws.cell(row=total_row, column=idx)
+            cell.fill = PatternFill("solid", fgColor=total_fill)
+            cell.border = border
+            cell.font = Font(bold=True)
+
+        for idx, col in colunas_com_total:
+            n = normalize_text(col)
+            letter = get_column_letter(idx)
+            cell = ws.cell(row=total_row, column=idx)
+
+            if n == "saldo":
+                cell.value = f"={letter}7"
+            else:
+                cell.value = f"=SUM({letter}6:{letter}7)"
+
     ws.row_dimensions[1].height = 26
     ws.row_dimensions[3].height = 34
     ws.row_dimensions[5].height = 24
 
     return ws
+
+
 
 
 def apply_formulas(ws, columns):
