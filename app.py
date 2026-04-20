@@ -470,14 +470,25 @@ def value_for_column(col_name: str, row_number: int):
 
 
 def aplicar_largura_automatica(ws, columns):
-    for idx, col in enumerate(columns, start=1):
-        letter = get_column_letter(idx)
-        max_len = len(str(col))
-        for row in range(1, ws.max_row + 1):
-            val = ws.cell(row=row, column=idx).value
-            if val is not None:
-                max_len = max(max_len, len(str(val)))
-        ws.column_dimensions[letter].width = min(max(max_len + 3, 12), 30)
+
+    for col_idx, col_name in enumerate(columns, start=1):
+        max_length = len(str(col_name))
+
+        # só olha as linhas principais (mais rápido e eficiente)
+        for row in range(6, 15):
+            value = ws.cell(row=row, column=col_idx).value
+            if value:
+                max_length = max(max_length, len(str(value)))
+
+        adjusted_width = max_length + 4
+
+        # limites mais profissionais
+        if adjusted_width < 12:
+            adjusted_width = 12
+        if adjusted_width > 35:
+            adjusted_width = 35
+
+        ws.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
 
 
 def style_sheet(ws, columns, prompt, project_name):
