@@ -325,6 +325,39 @@ def split_candidate_columns(text: str):
     return [p for p in parts if p]
 
 
+
+
+def extract_column_widths(prompt: str):
+    widths = {}
+    if not prompt:
+        return widths
+
+    match = re.search(r"larguras?\s*:\s*(.+)", prompt, flags=re.IGNORECASE)
+    if not match:
+        return widths
+
+    trecho = match.group(1)
+    trecho = re.split(r"\.|\n", trecho)[0]
+
+    partes = [p.strip() for p in trecho.split(",") if p.strip()]
+
+    for parte in partes:
+        m = re.match(r"(.+?)\s+(\d+)$", parte)
+        if m:
+            nome = normalizar_nome_coluna(m.group(1).strip())
+            largura = int(m.group(2))
+            if largura < 8:
+                largura = 8
+            if largura > 50:
+                largura = 50
+            widths[nome] = largura
+
+    return widths
+
+
+
+
+
 def extract_explicit_columns(prompt: str):
     if not prompt:
         return []
@@ -478,12 +511,33 @@ def value_for_column(col_name: str, row_number: int):
     return ""
 
 
-def aplicar_largura_automatica(ws, columns):
+
+
+
+
+
+
+
+
+
+
+
+def style_sheet(ws, columns, prompt, project_name):
+    header_color = detectar_cor_cabecalho(prompt)
+    dark = "0F243E"
+    light_fill = "F7FBFF"
+    total_fill = "FFF2CC"def aplicar_largura_automatica(ws, columns, prompt=None):
+    larguras_definidas = extract_column_widths(prompt)
 
     for col_idx, col_name in enumerate(columns, start=1):
+        nome_normalizado = normalizar_nome_coluna(col_name)
+
+        if nome_normalizado in larguras_definidas:
+            ws.column_dimensions[get_column_letter(col_idx)].width = larguras_definidas[nome_normalizado]
+            continue
+
         max_length = len(str(col_name))
 
-        # só olha as linhas principais (mais rápido e eficiente)
         for row in range(6, 15):
             value = ws.cell(row=row, column=col_idx).value
             if value:
@@ -491,20 +545,12 @@ def aplicar_largura_automatica(ws, columns):
 
         adjusted_width = max_length + 4
 
-        # limites mais profissionais
         if adjusted_width < 12:
             adjusted_width = 12
         if adjusted_width > 35:
             adjusted_width = 35
 
         ws.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
-
-
-def style_sheet(ws, columns, prompt, project_name):
-    header_color = detectar_cor_cabecalho(prompt)
-    dark = "0F243E"
-    light_fill = "F7FBFF"
-    total_fill = "FFF2CC"
     white = "FFFFFF"
 
     thin_gray = Side(style="thin", color="D9D9D9")
@@ -633,7 +679,7 @@ def fill_example_data(ws, columns):
                 ws.cell(row=row, column=idx, value=value)
 
     apply_formulas(ws, columns)
-    aplicar_largura_automatica(ws, columns)
+    aplicar_largura_automatica(ws, columns, prompt)
 
 
 def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
