@@ -227,6 +227,12 @@ def normalizar_nome_coluna(name: str) -> str:
         return "Modelo"
     if n in ("km", "quilometragem") or "km " in n or " km" in n:
         return "Km"
+    if "local" in n:
+        return "Local"
+    if "atividade" in n:
+        return "Atividade"
+    if "gasto" in n:
+        return "Gasto"
     if "cliente" in n:
         return "Cliente"
     if "produto" in n:
