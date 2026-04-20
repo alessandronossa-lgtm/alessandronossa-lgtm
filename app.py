@@ -328,6 +328,8 @@ def extract_explicit_columns(prompt: str):
     patterns = [
         r"colunas?\s*[:\-]\s*(.+)",
         r"colunas?\s+de\s+(.+)",
+        r"coluna\s*[:\-]\s*(.+)",
+        r"coluna\s+(.+)",
         r"deve ter\s+colunas?\s*[:\-]?\s*(.+)",
         r"nela deve ter\s+colunas?\s*[:\-]?\s*(.+)",
         r"campos?\s*[:\-]\s*(.+)",
@@ -351,6 +353,7 @@ def extract_explicit_columns(prompt: str):
                 return unique_columns([normalizar_nome_coluna(c) for c in cols])
 
     return []
+
 
 
 def infer_columns_from_prompt(prompt: str):
