@@ -517,40 +517,11 @@ def value_for_column(col_name: str, row_number: int):
 
 
 
-
-
-
-
-
 def style_sheet(ws, columns, prompt, project_name):
     header_color = detectar_cor_cabecalho(prompt)
     dark = "0F243E"
     light_fill = "F7FBFF"
-    total_fill = "FFF2CC"def aplicar_largura_automatica(ws, columns, prompt=None):
-    larguras_definidas = extract_column_widths(prompt)
-
-    for col_idx, col_name in enumerate(columns, start=1):
-        nome_normalizado = normalizar_nome_coluna(col_name)
-
-        if nome_normalizado in larguras_definidas:
-            ws.column_dimensions[get_column_letter(col_idx)].width = larguras_definidas[nome_normalizado]
-            continue
-
-        max_length = len(str(col_name))
-
-        for row in range(6, 15):
-            value = ws.cell(row=row, column=col_idx).value
-            if value:
-                max_length = max(max_length, len(str(value)))
-
-        adjusted_width = max_length + 4
-
-        if adjusted_width < 12:
-            adjusted_width = 12
-        if adjusted_width > 35:
-            adjusted_width = 35
-
-        ws.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
+    total_fill = "FFF2CC"
     white = "FFFFFF"
 
     thin_gray = Side(style="thin", color="D9D9D9")
@@ -601,7 +572,6 @@ def style_sheet(ws, columns, prompt, project_name):
             for row in range(6, 200):
                 ws.cell(row=row, column=idx).number_format = '0'
 
-    # 🔥 NOVA LÓGICA INTELIGENTE DE TOTAIS
     colunas_com_total = []
     for idx, col in enumerate(columns, start=1):
         n = normalize_text(col)
@@ -646,7 +616,6 @@ def style_sheet(ws, columns, prompt, project_name):
 
 
 
-
 def apply_formulas(ws, columns):
     q_idx = col_index(columns, "Quantidade")
     pu_idx = col_index(columns, "Preço Unitário")
@@ -671,7 +640,7 @@ def apply_formulas(ws, columns):
         ws.cell(row=7, column=saldo_idx).value = f"={saldo_letter}6+{e_letter}7-{s_letter}7"
 
 
-def fill_example_data(ws, columns):
+def fill_example_data(ws, columns, prompt=None):
     for row in (6, 7):
         for idx, col_name in enumerate(columns, start=1):
             value = value_for_column(col_name, row)
@@ -681,7 +650,6 @@ def fill_example_data(ws, columns):
     apply_formulas(ws, columns)
     aplicar_largura_automatica(ws, columns, prompt)
 
-
 def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
     columns = detect_columns(prompt)
 
@@ -690,10 +658,9 @@ def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
     ws.title = "Planilha"
 
     style_sheet(ws, columns, prompt, project_name)
-    fill_example_data(ws, columns)
+    fill_example_data(ws, columns, prompt)
 
     return wb
-
 
 # =====================================================
 # HEALTH
