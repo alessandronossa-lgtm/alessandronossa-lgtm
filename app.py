@@ -514,22 +514,24 @@ def value_for_column(col_name: str, row_number: int):
 
 def aplicar_largura_automatica(ws, columns, prompt=None):
     for col_idx, col_name in enumerate(columns, start=1):
-        max_length = len(str(col_name))
 
-        for row in range(6, 15):
-            value = ws.cell(row=row, column=col_idx).value
-            if value:
-                max_length = max(max_length, len(str(value)))
+        nome = col_name.lower()
 
-        adjusted_width = max_length + 4
+        # largura inteligente por tipo
+        if "descricao" in nome or "produto" in nome or "atividade" in nome:
+            width = 30
+        elif "cliente" in nome or "nome" in nome or "local" in nome:
+            width = 25
+        elif "data" in nome:
+            width = 12
+        elif "valor" in nome or "preco" in nome or "preço" in nome:
+            width = 15
+        elif "quantidade" in nome or "qtd" in nome:
+            width = 12
+        else:
+            width = 18
 
-        if adjusted_width < 12:
-            adjusted_width = 12
-        if adjusted_width > 35:
-            adjusted_width = 35
-
-        ws.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
-
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
 
 
 
