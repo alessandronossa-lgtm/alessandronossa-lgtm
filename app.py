@@ -544,6 +544,9 @@ def aplicar_largura_automatica(ws, columns, prompt=None):
 
 
 
+
+
+
 def style_sheet(ws, columns, prompt, project_name):
     header_color = detectar_cor_cabecalho(prompt)
     dark = "0F243E"
@@ -552,7 +555,12 @@ def style_sheet(ws, columns, prompt, project_name):
     white = "FFFFFF"
 
     thin_gray = Side(style="thin", color="D9D9D9")
-    border = Border(left=thin_gray, right=thin_gray, top=thin_gray, bottom=thin_gray)
+    border = Border(
+        left=thin_gray,
+        right=thin_gray,
+        top=thin_gray,
+        bottom=thin_gray
+    )
 
     title_end_col = max(1, min(4, len(columns)))
     subtitle_end_col = max(1, min(6, len(columns)))
@@ -583,10 +591,6 @@ def style_sheet(ws, columns, prompt, project_name):
     ws.freeze_panes = "A6"
     ws.auto_filter.ref = f"A5:{get_column_letter(len(columns))}5"
 
-
-
-
-
     for row in range(6, 60):
         for col in range(1, len(columns) + 1):
             cell = ws.cell(row=row, column=col)
@@ -611,9 +615,8 @@ def style_sheet(ws, columns, prompt, project_name):
         elif is_integer_column(col):
             for row in range(6, 200):
                 ws.cell(row=row, column=idx).number_format = '0'
-    
 
-    
+    colunas_com_total = []
 
     for idx, col in enumerate(columns, start=1):
         n = normalize_text(col)
@@ -655,7 +658,6 @@ def style_sheet(ws, columns, prompt, project_name):
     ws.row_dimensions[5].height = 24
 
     return ws
-
 
 
 def apply_formulas(ws, columns):
