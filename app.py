@@ -59,11 +59,12 @@ def now_utc():
     return datetime.now(timezone.utc)
 
 
+
 def base_url():
     env = os.getenv("BASE_URL")
     if env and env.strip():
         return env.rstrip("/")
-    return request.host_url.rstrip("/")
+    return "https://usepromptsheet.com"
 
 
 # =====================================================
