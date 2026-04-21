@@ -513,25 +513,34 @@ def value_for_column(col_name: str, row_number: int):
 
 
 def aplicar_largura_automatica(ws, columns, prompt=None):
+    larguras_definidas = extract_column_widths(prompt)
+
     for col_idx, col_name in enumerate(columns, start=1):
+        nome_normalizado = normalizar_nome_coluna(col_name)
 
-        nome = col_name.lower()
+        # 1) Se o usuário definiu largura no prompt, usa essa
+        if nome_normalizado in larguras_definidas:
+            ws.column_dimensions[get_column_letter(col_idx)].width = larguras_definidas[nome_normalizado]
+            continue
 
-        # largura inteligente por tipo
+        # 2) Caso não tenha definido, usa largura inteligente por tipo
+        nome = normalize_text(col_name)
+
         if "descricao" in nome or "produto" in nome or "atividade" in nome:
             width = 30
-        elif "cliente" in nome or "nome" in nome or "local" in nome:
+        elif "cliente" in nome or "nome" in nome or "local" in nome or "modelo" in nome:
             width = 25
         elif "data" in nome:
             width = 12
-        elif "valor" in nome or "preco" in nome or "preço" in nome:
+        elif "valor" in nome or "preco" in nome or "preço" in nome or "gasto" in nome:
             width = 15
-        elif "quantidade" in nome or "qtd" in nome:
+        elif "quantidade" in nome or "qtd" in nome or "km" in nome:
             width = 12
         else:
             width = 18
 
         ws.column_dimensions[get_column_letter(col_idx)].width = width
+
 
 
 
