@@ -589,15 +589,32 @@ def style_sheet(ws, columns, prompt, project_name):
             cell.border = border
            
 
-n = normalize_text(columns[col - 1])
+for row in range(6, 60):
+    for col in range(1, len(columns) + 1):
+        cell = ws.cell(row=row, column=col)
+        cell.border = border
 
-if "valor" in n or "preco" in n or "preço" in n:
-    cell.alignment = Alignment(horizontal="right", vertical="center")
-elif "quantidade" in n or "qtd" in n or "km" in n:
-    cell.alignment = Alignment(horizontal="center", vertical="center")
-else:
-    cell.alignment = Alignment(horizontal="left", vertical="center")
+        n = normalize_text(columns[col - 1])
 
+        if "valor" in n or "preco" in n or "preço" in n:
+            cell.alignment = Alignment(horizontal="right", vertical="center")
+        elif "quantidade" in n or "qtd" in n or "km" in n:
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+        else:
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+
+        if row % 2 == 0:
+            cell.fill = PatternFill("solid", fgColor=light_fill)
+
+for idx, col in enumerate(columns, start=1):
+    if is_money_column(col):
+        for row in range(6, 200):
+            ws.cell(row=row, column=idx).number_format = 'R$ #,##0.00'
+    elif is_integer_column(col):
+        for row in range(6, 200):
+            ws.cell(row=row, column=idx).number_format = '0'
+
+            
             
             if row % 2 == 0:
                 cell.fill = PatternFill("solid", fgColor=light_fill)
