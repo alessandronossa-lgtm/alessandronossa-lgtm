@@ -587,7 +587,18 @@ def style_sheet(ws, columns, prompt, project_name):
         for col in range(1, len(columns) + 1):
             cell = ws.cell(row=row, column=col)
             cell.border = border
-            cell.alignment = Alignment(vertical="center")
+           
+
+n = normalize_text(columns[col - 1])
+
+if "valor" in n or "preco" in n or "preço" in n:
+    cell.alignment = Alignment(horizontal="right", vertical="center")
+elif "quantidade" in n or "qtd" in n or "km" in n:
+    cell.alignment = Alignment(horizontal="center", vertical="center")
+else:
+    cell.alignment = Alignment(horizontal="left", vertical="center")
+
+            
             if row % 2 == 0:
                 cell.fill = PatternFill("solid", fgColor=light_fill)
 
