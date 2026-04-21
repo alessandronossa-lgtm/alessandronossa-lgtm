@@ -244,6 +244,31 @@
       line-height: 1.5;
     }
 
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .model-btn {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #dbe1ea;
+      background: #f8fafc;
+      color: #1f2937;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .model-btn:hover {
+      background: #eef5f0;
+      border-color: #b7d6bf;
+    }
+
     @media (max-width: 900px) {
       .grid {
         grid-template-columns: 1fr;
@@ -251,6 +276,12 @@
 
       .container {
         margin: 20px auto;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .model-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -290,6 +321,19 @@
               required
             />
             <div class="hint">Use um nome simples para identificar sua planilha depois.</div>
+          </div>
+
+          <div class="field">
+            <label>Modelos prontos</label>
+            <div class="model-grid">
+              <button type="button" class="model-btn" onclick="setPrompt('vendas')">📊 Controle de Vendas</button>
+              <button type="button" class="model-btn" onclick="setPrompt('financeiro')">💰 Controle Financeiro</button>
+              <button type="button" class="model-btn" onclick="setPrompt('estoque')">📦 Controle de Estoque</button>
+              <button type="button" class="model-btn" onclick="setPrompt('veiculos')">🚗 Controle de Veículos</button>
+              <button type="button" class="model-btn" onclick="setPrompt('obra')">🏗️ Controle de Obra</button>
+              <button type="button" class="model-btn" onclick="setPrompt('clientes')">👥 Cadastro de Clientes</button>
+            </div>
+            <div class="hint">Clique em um modelo para preencher automaticamente o campo abaixo.</div>
           </div>
 
           <div class="field">
@@ -350,5 +394,41 @@
       </div>
     </div>
   </div>
+
+  <script>
+    function setPrompt(tipo) {
+      let texto = "";
+
+      if (tipo === "vendas") {
+        texto = "Planilha de controle de vendas com colunas: Data, Cliente, Produto, Quantidade, Preço Unitário e Valor Total. O cabeçalho deve ficar verde.";
+      }
+
+      if (tipo === "financeiro") {
+        texto = "Planilha de controle financeiro pessoal com colunas: Data, Descrição, Categoria, Forma de Pagamento, Valor e Saldo. O cabeçalho deve ficar verde escuro.";
+      }
+
+      if (tipo === "estoque") {
+        texto = "Planilha de controle de estoque com colunas: Produto, Categoria, Quantidade, Estoque Mínimo e Fornecedor. O cabeçalho deve ficar azul.";
+      }
+
+      if (tipo === "veiculos") {
+        texto = "Planilha de controle de veículos com colunas: Placa, Modelo, Km, Data da Revisão e Observação. O cabeçalho deve ficar vermelho.";
+      }
+
+      if (tipo === "obra") {
+        texto = "Planilha de controle de gastos de obra com colunas: Data, Local, Atividade, Material, Quantidade, Valor e Responsável. O cabeçalho deve ficar cinza.";
+      }
+
+      if (tipo === "clientes") {
+        texto = "Planilha de cadastro de clientes com colunas: Nome, Telefone, E-mail, Cidade e Observação. O cabeçalho deve ficar azul.";
+      }
+
+      const campoPrompt = document.getElementById("prompt");
+      if (campoPrompt) {
+        campoPrompt.value = texto;
+        campoPrompt.focus();
+      }
+    }
+  </script>
 </body>
 </html>
