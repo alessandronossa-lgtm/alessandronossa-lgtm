@@ -25,8 +25,13 @@
   <div class="card">
     <h2>Pagamento pendente…</h2>
     <p>
-      Projeto <b>#{{ projeto.id }}</b>: {{ projeto.titulo }}<br>
-      Assim que confirmar, liberamos automaticamente e você volta para o projeto.
+      Projeto <b>#{{ projeto.id }}</b>: {{ projeto.nome }}<br>
+      Assim que o pagamento for confirmado, o acesso será liberado automaticamente.
+    </p>
+
+    <p>
+      Se você já concluiu o pagamento, pode clicar em
+      <strong>“Já paguei → voltar agora”</strong>.
     </p>
 
     <div class="box">
@@ -42,8 +47,15 @@
     <div class="ok" id="okBox">✅ Pagamento confirmado! Redirecionando…</div>
 
     <div class="actions">
-      <button class="primary" onclick="checar(true)">Verificar agora</button>
-      <a class="btn ghost" href="/projeto/{{ projeto.id }}">Voltar ao projeto</a>
+      <button class="primary" onclick="checar()">Verificar agora</button>
+
+      <a class="btn ghost" href="/projeto/{{ projeto.id }}">
+        Já paguei → voltar agora
+      </a>
+
+      <a class="btn ghost" href="/projeto/{{ projeto.id }}">
+        Voltar ao projeto
+      </a>
     </div>
   </div>
 
