@@ -551,8 +551,8 @@ def inserir_logo(ws):
     try:
         logo_path = os.path.join(app.root_path, "static", "logo.png")
         img = Image(logo_path)
-        img.width = 50
-        img.height = 50
+        img.width = 60
+        img.height = 60
         ws.add_image(img, "A2")
     except Exception as e:
         print("Erro ao inserir logo:", e)
@@ -581,12 +581,12 @@ def style_sheet(ws, columns, prompt, project_name):
     prompt_end_col = max(1, min(max(6, len(columns)), 8))
 
     ws.merge_cells(start_row=1, start_column=3, end_row=1, end_column=max(5, title_end_col + 2))
-    ws.merge_cells(start_row=2, start_column=3, end_row=2, end_column=max(7, subtitle_end_col + 2))
-    ws.merge_cells(start_row=3, start_column=3, end_row=3, end_column=max(8, prompt_end_col + 2))
-
    
-    ws["C2"] = f"Projeto: {project_name}"
-    ws["C2"].font = Font(size=12, bold=True, color=header_color)
+
+ws["B2"] = f"Projeto: {project_name}"
+ws["B2"].font = Font(size=12, bold=True, color=header_color)
+ws["B2"].alignment = Alignment(horizontal="left", vertical="center")
+
 
    
 
