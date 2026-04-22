@@ -657,6 +657,69 @@ def style_sheet(ws, columns, prompt, project_name):
 
     return ws
 
+def fill_example_data(ws, columns, prompt):
+    for row in (6, 7):
+        for idx, col in enumerate(columns, start=1):
+            cell = ws.cell(row=row, column=idx)
+
+            valor = value_for_column(col, row)
+
+            # Fórmulas automáticas
+            nome = normalize_text(col)
+
+            if nome == "valor total":
+                qtd_idx = col_index(columns, "Quantidade")
+                preco_idx = col_index(columns, "Preço Unitário")
+
+                if qtd_idx and preco_idx:
+                    qtd_letter = get_column_letter(qtd_idx)
+                    preco_letter = get_column_letter(preco_idx)
+                    cell.value = f"={qtd_letter}{row}*{preco_letter}{row}"
+                else:
+                    cell.value = None
+
+            elif nome == "saldo":
+                entrada_idx = col_index(columns, "Entrada")
+                saida_idx = col_index(columns, "Saída")
+
+                if entrada_idx and saida_idx:
+                    entrada_letter = get_column_letter(entrada_idx)
+                    saida_letter = get_column_letter(saida_idx)
+
+                    if row == 6:
+                        cell.value = f"={entrada_letter}{row}-{saida_letter}{row}"
+                    else:
+                        saldo_idx = idx
+                        saldo_letter = get_column_letter(saldo_idx)
+                        cell.value = f"={saldo_letter}{row-1}+{entrada_letter}{row}-{saida_letter}{row}"
+                else:
+                    cell.value = None
+
+            else:
+                cell.value = valor
+
+    aplicar_largura_automatica(ws, columns, prompt)
+
+
+def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
+    columns = detect_columns(prompt)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Planilha"
+
+    style_sheet(ws, columns, prompt, project_name)
+    fill_example_data(ws, columns, prompt)
+
+    return wb
+
+
+
+
+
+
+
+
 
 
 
