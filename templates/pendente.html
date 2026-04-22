@@ -6,32 +6,134 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    body{margin:0;font-family:Inter,system-ui;background:linear-gradient(135deg,#1e1e2f,#2c2c54);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
-    .card{background:#fff;color:#333;border-radius:18px;max-width:560px;width:100%;padding:34px;box-shadow:0 15px 40px rgba(0,0,0,.35)}
-    h2{margin:0 0 10px}
-    p{margin:0 0 14px;color:#666;line-height:1.5}
-    .box{background:#f6f7fb;border:1px solid #e6e8f0;border-radius:12px;padding:14px}
-    .row{display:flex;gap:10px;align-items:center}
-    .dot{width:10px;height:10px;border-radius:50%;background:#6c5ce7;box-shadow:0 0 0 5px rgba(108,92,231,.12);animation:pulse 1.2s infinite}
-    @keyframes pulse{0%{transform:scale(.95);opacity:.8}50%{transform:scale(1.2);opacity:1}100%{transform:scale(.95);opacity:.8}}
-    button,a.btn{border:none;cursor:pointer;border-radius:10px;padding:12px 14px;font-weight:800;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
-    .primary{background:#6c5ce7;color:#fff}
-    .ghost{background:#f1f2f7;color:#333}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-    .ok{display:none;background:#d4edda;color:#155724;border:1px solid #c3e6cb;border-radius:10px;padding:12px 14px;margin-top:14px;font-weight:800}
+    body{
+      margin:0;
+      font-family:Inter,system-ui;
+      background:linear-gradient(135deg,#1e1e2f,#2c2c54);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px
+    }
+    .card{
+      background:#fff;
+      color:#333;
+      border-radius:18px;
+      max-width:620px;
+      width:100%;
+      padding:34px;
+      box-shadow:0 15px 40px rgba(0,0,0,.35)
+    }
+    h2{
+      margin:0 0 10px;
+      font-size:34px;
+      line-height:1.1
+    }
+    p{
+      margin:0 0 14px;
+      color:#5b6472;
+      line-height:1.6;
+      font-size:15px
+    }
+    .box{
+      background:#f6f7fb;
+      border:1px solid #e6e8f0;
+      border-radius:12px;
+      padding:16px
+    }
+    .row{
+      display:flex;
+      gap:12px;
+      align-items:center
+    }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:#6c5ce7;
+      box-shadow:0 0 0 5px rgba(108,92,231,.12);
+      animation:pulse 1.2s infinite
+    }
+    @keyframes pulse{
+      0%{transform:scale(.95);opacity:.8}
+      50%{transform:scale(1.2);opacity:1}
+      100%{transform:scale(.95);opacity:.8}
+    }
+    .hint{
+      background:#fff8e7;
+      border:1px solid #f3d19c;
+      color:#8a5a00;
+      border-radius:12px;
+      padding:14px 16px;
+      margin-top:16px;
+      font-size:14px;
+      line-height:1.5
+    }
+    .trust{
+      background:#eefaf2;
+      border:1px solid #b7ebc6;
+      color:#146c2e;
+      border-radius:12px;
+      padding:14px 16px;
+      margin-top:16px;
+      font-size:14px;
+      line-height:1.5
+    }
+    button,a.btn{
+      border:none;
+      cursor:pointer;
+      border-radius:10px;
+      padding:13px 16px;
+      font-weight:800;
+      font-size:14px;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center
+    }
+    .primary{
+      background:#6c5ce7;
+      color:#fff
+    }
+    .ghost{
+      background:#f1f2f7;
+      color:#333
+    }
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:18px
+    }
+    .ok{
+      display:none;
+      background:#d4edda;
+      color:#155724;
+      border:1px solid #c3e6cb;
+      border-radius:10px;
+      padding:12px 14px;
+      margin-top:16px;
+      font-weight:800
+    }
+    .small{
+      font-size:13px;
+      color:#6b7280;
+      margin-top:10px
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <h2>Pagamento pendente…</h2>
+
     <p>
-      Projeto <b>#{{ projeto.id }}</b>: {{ projeto.nome }}<br>
-      Assim que o pagamento for confirmado, o acesso será liberado automaticamente.
+      Projeto <b>#{{ projeto.id }}</b>: {{ projeto.nome }}
     </p>
 
     <p>
-      Se você já concluiu o pagamento, pode clicar em
-      <strong>“Já paguei → voltar agora”</strong>.
+      Assim que o pagamento for confirmado, seu acesso será liberado automaticamente
+      e você poderá voltar para a planilha sem precisar pagar novamente.
     </p>
 
     <div class="box">
@@ -42,6 +144,15 @@
           <div style="font-size:12px;color:#666;">Verificando a cada 3 segundos…</div>
         </div>
       </div>
+    </div>
+
+    <div class="hint">
+      <strong>Pagamentos via PIX podem levar alguns segundos para confirmar.</strong><br>
+      Se você já finalizou o pagamento no banco, clique em <strong>“Já paguei → voltar agora”</strong>.
+    </div>
+
+    <div class="trust">
+      ✅ Assim que a confirmação chegar, o acesso é liberado automaticamente para este projeto.
     </div>
 
     <div class="ok" id="okBox">✅ Pagamento confirmado! Redirecionando…</div>
@@ -56,6 +167,10 @@
       <a class="btn ghost" href="/projeto/{{ projeto.id }}">
         Voltar ao projeto
       </a>
+    </div>
+
+    <div class="small">
+      Dica: se o pagamento já foi concluído, basta voltar ao projeto e tentar novamente em instantes.
     </div>
   </div>
 
