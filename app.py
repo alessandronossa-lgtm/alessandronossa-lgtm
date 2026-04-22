@@ -584,15 +584,11 @@ def style_sheet(ws, columns, prompt, project_name):
     ws.merge_cells(start_row=2, start_column=3, end_row=2, end_column=max(7, subtitle_end_col + 2))
     ws.merge_cells(start_row=3, start_column=3, end_row=3, end_column=max(8, prompt_end_col + 2))
 
-    ws["C1"] = "PromptSheet"
-    ws["C1"].font = Font(size=18, bold=True, color=dark)
-
+   
     ws["C2"] = f"Projeto: {project_name}"
-    ws["C2"].font = Font(size=11, bold=True, color=header_color)
+    ws["C2"].font = Font(size=12, bold=True, color=header_color)
 
-    ws["C3"] = f"Prompt: {prompt or ''}"
-    ws["C3"].font = Font(size=10, italic=True, color="666666")
-    ws["C3"].alignment = Alignment(wrap_text=True)
+   
 
     header_row = 5
     for idx, col in enumerate(columns, start=1):
@@ -667,9 +663,9 @@ def style_sheet(ws, columns, prompt, project_name):
             else:
                 cell.value = f"=SUM({letter}6:{letter}7)"
 
-    ws.row_dimensions[1].height = 42
-    ws.row_dimensions[2].height = 22
-    ws.row_dimensions[3].height = 42
+    ws.row_dimensions[1].height = 8
+    ws.row_dimensions[2].height = 20
+    ws.row_dimensions[3].height = 8
     ws.row_dimensions[5].height = 24
 
     return ws
