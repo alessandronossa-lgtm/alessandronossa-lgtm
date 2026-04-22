@@ -549,13 +549,13 @@ def aplicar_largura_automatica(ws, columns, prompt=None):
 
 def inserir_logo(ws):
     try:
-        img = Image("static/logo.png")
+        logo_path = os.path.join(app.root_path, "static", "logo.png")
+        img = Image(logo_path)
         img.width = 95
         img.height = 95
         ws.add_image(img, "A1")
     except Exception as e:
         print("Erro ao inserir logo:", e)
-
 
 
 
