@@ -551,9 +551,9 @@ def inserir_logo(ws):
     try:
         logo_path = os.path.join(app.root_path, "static", "logo.png")
         img = Image(logo_path)
-        img.width = 95
-        img.height = 95
-        ws.add_image(img, "A1")
+        img.width = 50
+        img.height = 50
+        ws.add_image(img, "A2")
     except Exception as e:
         print("Erro ao inserir logo:", e)
 
