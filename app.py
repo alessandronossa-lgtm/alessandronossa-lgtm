@@ -557,11 +557,8 @@ def inserir_logo(ws):
     except Exception as e:
         print("Erro ao inserir logo:", e)
 
-
-
 def style_sheet(ws, columns, prompt, project_name):
     header_color = detectar_cor_cabecalho(prompt)
-    dark = "0F243E"
     light_fill = "F7FBFF"
     total_fill = "FFF2CC"
     white = "FFFFFF"
@@ -576,19 +573,9 @@ def style_sheet(ws, columns, prompt, project_name):
         bottom=thin_gray
     )
 
-    title_end_col = max(1, min(4, len(columns)))
-    subtitle_end_col = max(1, min(6, len(columns)))
-    prompt_end_col = max(1, min(max(6, len(columns)), 8))
-
-    ws.merge_cells(start_row=1, start_column=3, end_row=1, end_column=max(5, title_end_col + 2))
-   
-
-ws["B2"] = f"Projeto: {project_name}"
-ws["B2"].font = Font(size=12, bold=True, color=header_color)
-ws["B2"].alignment = Alignment(horizontal="left", vertical="center")
-
-
-   
+    ws["B2"] = f"Projeto: {project_name}"
+    ws["B2"].font = Font(size=12, bold=True, color=header_color)
+    ws["B2"].alignment = Alignment(horizontal="left", vertical="center")
 
     header_row = 5
     for idx, col in enumerate(columns, start=1):
@@ -670,51 +657,9 @@ ws["B2"].alignment = Alignment(horizontal="left", vertical="center")
 
     return ws
 
-def apply_formulas(ws, columns):
-    q_idx = col_index(columns, "Quantidade")
-    pu_idx = col_index(columns, "Preço Unitário")
-    vt_idx = col_index(columns, "Valor Total")
-
-    if q_idx and pu_idx and vt_idx:
-        for row in (6, 7):
-            q_letter = get_column_letter(q_idx)
-            pu_letter = get_column_letter(pu_idx)
-            ws.cell(row=row, column=vt_idx).value = f"={q_letter}{row}*{pu_letter}{row}"
-
-    e_idx = col_index(columns, "Entrada")
-    s_idx = col_index(columns, "Saída")
-    saldo_idx = col_index(columns, "Saldo")
-
-    if e_idx and s_idx and saldo_idx:
-        e_letter = get_column_letter(e_idx)
-        s_letter = get_column_letter(s_idx)
-        saldo_letter = get_column_letter(saldo_idx)
-
-        ws.cell(row=6, column=saldo_idx).value = f"={e_letter}6-{s_letter}6"
-        ws.cell(row=7, column=saldo_idx).value = f"={saldo_letter}6+{e_letter}7-{s_letter}7"
 
 
-def fill_example_data(ws, columns, prompt=None):
-    for row in (6, 7):
-        for idx, col_name in enumerate(columns, start=1):
-            value = value_for_column(col_name, row)
-            if value is not None:
-                ws.cell(row=row, column=idx, value=value)
 
-    apply_formulas(ws, columns)
-    aplicar_largura_automatica(ws, columns, prompt)
-
-def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
-    columns = detect_columns(prompt)
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Planilha"
-
-    style_sheet(ws, columns, prompt, project_name)
-    fill_example_data(ws, columns, prompt)
-
-    return wb
 
 # =====================================================
 # HEALTH
