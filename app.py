@@ -21,6 +21,7 @@ from werkzeug.utils import secure_filename
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image
 
 
 # =====================================================
@@ -546,6 +547,16 @@ def aplicar_largura_automatica(ws, columns, prompt=None):
 
 
 
+def inserir_logo(ws):
+    try:
+        img = Image("static/logo.png")
+        img.width = 95
+        img.height = 95
+        ws.add_image(img, "A1")
+    except Exception as e:
+        print("Erro ao inserir logo:", e)
+
+
 
 
 def style_sheet(ws, columns, prompt, project_name):
@@ -554,6 +565,8 @@ def style_sheet(ws, columns, prompt, project_name):
     light_fill = "F7FBFF"
     total_fill = "FFF2CC"
     white = "FFFFFF"
+
+    inserir_logo(ws)
 
     thin_gray = Side(style="thin", color="D9D9D9")
     border = Border(
@@ -567,19 +580,19 @@ def style_sheet(ws, columns, prompt, project_name):
     subtitle_end_col = max(1, min(6, len(columns)))
     prompt_end_col = max(1, min(max(6, len(columns)), 8))
 
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=title_end_col)
-    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=subtitle_end_col)
-    ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=prompt_end_col)
+    ws.merge_cells(start_row=1, start_column=3, end_row=1, end_column=max(5, title_end_col + 2))
+    ws.merge_cells(start_row=2, start_column=3, end_row=2, end_column=max(7, subtitle_end_col + 2))
+    ws.merge_cells(start_row=3, start_column=3, end_row=3, end_column=max(8, prompt_end_col + 2))
 
-    ws["A1"] = "PromptSheet"
-    ws["A1"].font = Font(size=18, bold=True, color=dark)
+    ws["C1"] = "PromptSheet"
+    ws["C1"].font = Font(size=18, bold=True, color=dark)
 
-    ws["A2"] = f"Projeto: {project_name}"
-    ws["A2"].font = Font(size=11, bold=True, color=header_color)
+    ws["C2"] = f"Projeto: {project_name}"
+    ws["C2"].font = Font(size=11, bold=True, color=header_color)
 
-    ws["A3"] = f"Prompt: {prompt or ''}"
-    ws["A3"].font = Font(size=10, italic=True, color="666666")
-    ws["A3"].alignment = Alignment(wrap_text=True)
+    ws["C3"] = f"Prompt: {prompt or ''}"
+    ws["C3"].font = Font(size=10, italic=True, color="666666")
+    ws["C3"].alignment = Alignment(wrap_text=True)
 
     header_row = 5
     for idx, col in enumerate(columns, start=1):
@@ -654,12 +667,12 @@ def style_sheet(ws, columns, prompt, project_name):
             else:
                 cell.value = f"=SUM({letter}6:{letter}7)"
 
-    ws.row_dimensions[1].height = 26
-    ws.row_dimensions[3].height = 34
+    ws.row_dimensions[1].height = 42
+    ws.row_dimensions[2].height = 22
+    ws.row_dimensions[3].height = 42
     ws.row_dimensions[5].height = 24
 
     return ws
-
 
 def apply_formulas(ws, columns):
     q_idx = col_index(columns, "Quantidade")
