@@ -275,14 +275,29 @@
 </head>
 <body>
 
-  <div class="topbar">
-    <p class="brand">PromptSheet</p>
+ <div class="topbar">
 
-    <div class="topbar-actions">
-      <a href="{{ url_for('app_home') }}">← Voltar</a>
-      <a href="{{ url_for('logout') }}">Sair</a>
+  <!-- LOGO + TEXTO -->
+  <div style="display:flex; align-items:center; gap:12px;">
+    
+    <img src="{{ url_for('static', filename='logo.png') }}"
+         alt="PromptSheet"
+         style="height:40px; width:auto; background:white; border-radius:8px; padding:4px;">
+
+    <div>
+      <div style="font-size:18px; font-weight:700;">PromptSheet</div>
+      <div style="font-size:12px; opacity:0.9;">Sua planilha, a um texto de distância</div>
     </div>
+
   </div>
+
+  <!-- BOTÕES -->
+  <div class="topbar-actions">
+    <a href="{{ url_for('app_home') }}">← Voltar</a>
+    <a href="{{ url_for('logout') }}">Sair</a>
+  </div>
+
+</div>
 
   <div class="container">
 
