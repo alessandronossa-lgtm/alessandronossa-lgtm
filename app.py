@@ -276,6 +276,10 @@ def normalizar_nome_coluna(name: str) -> str:
         return "Cargo"
     if "nome" in n:
         return "Nome"
+    if "observacao" in n or "observação" in n:
+        return "Observação"
+    if "data da revisao" in n or "data da revisão" in n:
+        return "Data Da Revisão"
 
     return name.strip().title()
 
@@ -328,8 +332,6 @@ def split_candidate_columns(text: str):
     return [p for p in parts if p]
 
 
-
-
 def extract_column_widths(prompt: str):
     widths = {}
     if not prompt:
@@ -351,14 +353,11 @@ def extract_column_widths(prompt: str):
             largura = int(m.group(2))
             if largura < 8:
                 largura = 8
-            if largura > 50:
-                largura = 50
+            if largura > 70:
+                largura = 70
             widths[nome] = largura
 
     return widths
-
-
-
 
 
 def extract_explicit_columns(prompt: str):
@@ -384,7 +383,7 @@ def extract_explicit_columns(prompt: str):
             tail = match.group(1)
 
             tail = re.split(
-                r"\.|\n|gostaria|quero que|quero também|quero tambem|tambem|também|mudar|alterar|trocar|deixar|ficar|cabeçalho|cabecalho|cor|fonte|titulo|título",
+                r"\.|\n|gostaria|quero que|quero também|quero tambem|tambem|também|mudar|alterar|trocar|deixar|ficar|cabeçalho|cabecalho|cor|fonte|titulo|título|larguras?",
                 tail,
                 maxsplit=1,
                 flags=re.IGNORECASE
@@ -395,7 +394,6 @@ def extract_explicit_columns(prompt: str):
                 return unique_columns([normalizar_nome_coluna(c) for c in cols])
 
     return []
-
 
 
 def infer_columns_from_prompt(prompt: str):
@@ -437,7 +435,7 @@ def detect_columns(prompt: str):
 
 def is_money_column(name: str) -> bool:
     n = normalize_text(name)
-    keys = ["preco", "valor", "entrada", "saida", "saída", "saldo", "custo", "total"]
+    keys = ["preco", "valor", "entrada", "saida", "saída", "saldo", "custo", "total", "gasto"]
     return any(k in n for k in keys)
 
 
@@ -472,7 +470,7 @@ def value_for_column(col_name: str, row_number: int):
         return "Pendente" if row_number == 6 else "Pago"
     if name == "descricao":
         return "Lançamento exemplo" if row_number == 6 else "Movimentação exemplo"
-    if name == "observacao":
+    if name == "observacao" or name == "observação":
         return ""
     if name == "forma de pagamento":
         return "PIX" if row_number == 6 else "Boleto"
@@ -492,16 +490,17 @@ def value_for_column(col_name: str, row_number: int):
         return "Strada" if row_number == 6 else "Hilux"
     if name == "km":
         return 45230 if row_number == 6 else 78110
-
+    if name == "data da revisao" or name == "data da revisão":
+        return "10/04/2026" if row_number == 6 else "15/04/2026"
     if name in ("quantidade", "qtd"):
         return 2 if row_number == 6 else 3
-    if name == "estoque minimo":
+    if name == "estoque minimo" or name == "estoque mínimo":
         return 10 if row_number == 6 else 5
     if name == "estoque":
         return 25 if row_number == 6 else 8
-    if name == "preco unitario":
+    if name == "preco unitario" or name == "preço unitário":
         return 35.0 if row_number == 6 else 20.0
-    if name == "valor":
+    if name == "valor" or name == "gasto":
         return 150.0 if row_number == 6 else 90.0
     if name == "entrada":
         return 500.0 if row_number == 6 else 0.0
@@ -514,27 +513,24 @@ def value_for_column(col_name: str, row_number: int):
     return ""
 
 
-
 def aplicar_largura_automatica(ws, columns, prompt=None):
     larguras_definidas = extract_column_widths(prompt)
 
     for col_idx, col_name in enumerate(columns, start=1):
         nome_normalizado = normalizar_nome_coluna(col_name)
 
-        # 1) Se o usuário definiu largura no prompt, usa essa
         if nome_normalizado in larguras_definidas:
             ws.column_dimensions[get_column_letter(col_idx)].width = larguras_definidas[nome_normalizado]
             continue
 
-        # 2) Caso não tenha definido, usa largura inteligente por tipo
         nome = normalize_text(col_name)
 
-        if "descricao" in nome or "produto" in nome or "atividade" in nome:
+        if "descricao" in nome or "produto" in nome or "atividade" in nome or "observacao" in nome or "observação" in nome:
             width = 30
         elif "cliente" in nome or "nome" in nome or "local" in nome or "modelo" in nome:
             width = 25
         elif "data" in nome:
-            width = 12
+            width = 18
         elif "valor" in nome or "preco" in nome or "preço" in nome or "gasto" in nome:
             width = 15
         elif "quantidade" in nome or "qtd" in nome or "km" in nome:
@@ -545,18 +541,16 @@ def aplicar_largura_automatica(ws, columns, prompt=None):
         ws.column_dimensions[get_column_letter(col_idx)].width = width
 
 
-
-
-
 def inserir_logo(ws):
     try:
         logo_path = os.path.join(app.root_path, "static", "logo.png")
         img = Image(logo_path)
-        img.width = 60
-        img.height = 60
+        img.width = 44
+        img.height = 44
         ws.add_image(img, "A2")
     except Exception as e:
         print("Erro ao inserir logo:", e)
+
 
 def style_sheet(ws, columns, prompt, project_name):
     header_color = detectar_cor_cabecalho(prompt)
@@ -596,7 +590,7 @@ def style_sheet(ws, columns, prompt, project_name):
 
             n = normalize_text(columns[col - 1])
 
-            if "valor" in n or "preco" in n or "preço" in n:
+            if "valor" in n or "preco" in n or "preço" in n or "gasto" in n:
                 cell.alignment = Alignment(horizontal="right", vertical="center")
             elif "quantidade" in n or "qtd" in n or "km" in n:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -623,7 +617,7 @@ def style_sheet(ws, columns, prompt, project_name):
             "quantidade", "valor", "valor total",
             "entrada", "saida", "saída",
             "preco", "preço", "custo",
-            "saldo", "estoque"
+            "saldo", "estoque", "gasto"
         ]):
             colunas_com_total.append((idx, col))
 
@@ -651,12 +645,13 @@ def style_sheet(ws, columns, prompt, project_name):
             else:
                 cell.value = f"=SUM({letter}6:{letter}7)"
 
-    ws.row_dimensions[1].height = 8
-    ws.row_dimensions[2].height = 20
-    ws.row_dimensions[3].height = 8
+    ws.row_dimensions[1].height = 6
+    ws.row_dimensions[2].height = 18
+    ws.row_dimensions[3].height = 6
     ws.row_dimensions[5].height = 24
 
     return ws
+
 
 def fill_example_data(ws, columns, prompt):
     for row in (6, 7):
@@ -664,8 +659,6 @@ def fill_example_data(ws, columns, prompt):
             cell = ws.cell(row=row, column=idx)
 
             valor = value_for_column(col, row)
-
-            # Fórmulas automáticas
             nome = normalize_text(col)
 
             if nome == "valor total":
@@ -690,8 +683,7 @@ def fill_example_data(ws, columns, prompt):
                     if row == 6:
                         cell.value = f"={entrada_letter}{row}-{saida_letter}{row}"
                     else:
-                        saldo_idx = idx
-                        saldo_letter = get_column_letter(saldo_idx)
+                        saldo_letter = get_column_letter(idx)
                         cell.value = f"={saldo_letter}{row-1}+{entrada_letter}{row}-{saida_letter}{row}"
                 else:
                     cell.value = None
@@ -713,8 +705,6 @@ def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
     fill_example_data(ws, columns, prompt)
 
     return wb
-
-
 
 
 
