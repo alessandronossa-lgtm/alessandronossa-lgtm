@@ -188,37 +188,24 @@
       background: #f5fbf7;
     }
 
-    .offer-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-top: 18px;
-    }
-
     .offer-box {
       border-radius: 14px;
-      padding: 18px;
-      border: 1px solid #e5e7eb;
-    }
-
-    .offer-box.daily {
+      padding: 20px;
+      border: 1px solid #f3d19c;
       background: #fff8e7;
-      border-color: #f3d19c;
-    }
-
-    .offer-box.premium {
-      background: #eefaf2;
-      border-color: #b7ebc6;
+      margin-top: 18px;
+      max-width: 420px;
     }
 
     .offer-title {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: bold;
       margin: 0 0 8px 0;
+      color: #111827;
     }
 
     .offer-price {
-      font-size: 28px;
+      font-size: 32px;
       font-weight: bold;
       margin: 0 0 10px 0;
       color: #111827;
@@ -229,6 +216,17 @@
       color: #4b5563;
       line-height: 1.5;
       font-size: 14px;
+    }
+
+    .alert-pix {
+      margin-top: 16px;
+      background: #fff8e7;
+      border: 1px solid #f3d19c;
+      color: #8a5a00;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
     }
 
     .tips {
@@ -256,24 +254,13 @@
       margin: 24px 0;
     }
 
-    .alert-pix {
-      margin-top: 16px;
-      background: #fff8e7;
-      border: 1px solid #f3d19c;
-      color: #8a5a00;
-      padding: 14px 16px;
-      border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
     @media (max-width: 820px) {
-      .offer-grid {
-        grid-template-columns: 1fr;
-      }
-
       .container {
         padding: 0 14px 30px;
+      }
+
+      .offer-box {
+        max-width: 100%;
       }
     }
   </style>
@@ -313,15 +300,9 @@
       </div>
 
       <div class="badge-row">
-        {% if premium %}
-          <span class="badge badge-ok">Premium ativo</span>
-        {% endif %}
-
         {% if acesso_ativo %}
           <span class="badge badge-ok">Acesso avulso ativo</span>
-        {% endif %}
-
-        {% if not premium and not acesso_ativo %}
+        {% else %}
           <span class="badge badge-warn">Aguardando liberação de acesso</span>
         {% endif %}
       </div>
@@ -348,10 +329,10 @@
     <div class="card">
       <h2>Gerar planilha</h2>
 
-      {% if premium or acesso_ativo %}
+      {% if acesso_ativo %}
         <div class="alert alert-success">
           Seu acesso está liberado. Agora você já pode gerar e baixar esta planilha.
-          {% if expira_em and not premium %}
+          {% if expira_em %}
             <br><span class="small">Acesso avulso válido até: {{ expira_em }}</span>
           {% endif %}
         </div>
@@ -368,31 +349,18 @@
 
       {% else %}
         <div class="alert alert-warn">
-          Seu projeto já está pronto para a próxima etapa. Para baixar a planilha, escolha uma das opções abaixo.
+          Seu projeto já está pronto para a próxima etapa. Para gerar e baixar a planilha, libere o acesso por 24 horas.
         </div>
 
-        <div class="offer-grid">
-          <div class="offer-box daily">
-            <p class="offer-title">Acesso avulso 24h</p>
-            <p class="offer-price">R$ {{ '%.2f'|format(price_avulso)|replace('.', ',') }}</p>
-            <p class="offer-text">
-              Ideal para quem quer baixar esta planilha agora, com acesso liberado por 24 horas.
-            </p>
-            <button class="btn" type="button" onclick="comprarDiaria()">
-              Comprar acesso 24h
-            </button>
-          </div>
-
-          <div class="offer-box premium">
-            <p class="offer-title">Premium mensal</p>
-            <p class="offer-price">R$ {{ '%.2f'|format(price_premium)|replace('.', ',') }}</p>
-            <p class="offer-text">
-              Ideal para quem quer criar e baixar várias planilhas, sem se preocupar com pagamento por projeto.
-            </p>
-            <button class="btn" type="button" onclick="assinarPremium()">
-              Assinar Premium
-            </button>
-          </div>
+        <div class="offer-box">
+          <p class="offer-title">Acesso avulso 24h</p>
+          <p class="offer-price">R$ {{ '%.2f'|format(price_avulso)|replace('.', ',') }}</p>
+          <p class="offer-text">
+            Ideal para quem quer baixar esta planilha agora, com acesso liberado por 24 horas para ajustar e gerar novas versões.
+          </p>
+          <button class="btn" type="button" onclick="comprarDiaria()">
+            Comprar acesso 24h
+          </button>
         </div>
 
         <div class="alert-pix">
@@ -402,10 +370,11 @@
         </div>
 
         <div class="tips">
-          <strong>Qual opção escolher?</strong>
+          <strong>Como funciona?</strong>
           <ul>
-            <li><strong>24h:</strong> melhor para testar ou baixar uma única planilha.</li>
-            <li><strong>Premium:</strong> melhor para uso recorrente e mais economia no longo prazo.</li>
+            <li>Você libera o acesso por 24 horas.</li>
+            <li>Pode ajustar o texto da planilha nesse período.</li>
+            <li>Gera novas versões sem precisar recriar o projeto do zero.</li>
           </ul>
         </div>
 
@@ -437,26 +406,6 @@
         alert(data.erro || "Não foi possível iniciar o pagamento da diária.");
       } catch (e) {
         alert("Erro ao tentar iniciar a compra da diária.");
-      }
-    }
-
-    async function assinarPremium() {
-      try {
-        const resp = await fetch("{{ url_for('premium_assinar') }}", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
-        });
-
-        const data = await resp.json();
-
-        if (data.init_point) {
-          window.location.href = data.init_point;
-          return;
-        }
-
-        alert(data.erro || "Não foi possível iniciar a assinatura Premium.");
-      } catch (e) {
-        alert("Erro ao tentar iniciar a assinatura Premium.");
       }
     }
   </script>
