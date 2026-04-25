@@ -1,350 +1,228 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>PromptSheet</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>PromptSheet</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+<style>
+* { box-sizing: border-box; }
 
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #1e1e2f, #2c2c54);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: white;
-            padding: 20px;
-        }
+body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #1e1e2f, #2c2c54);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
 
-        .card {
-            background: #ffffff;
-            color: #333;
-            padding: 36px;
-            border-radius: 20px;
-            width: 100%;
-            max-width: 680px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.35);
-        }
+.card {
+    background: #ffffff;
+    color: #333;
+    padding: 32px;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 760px; /* mais largo */
+    box-shadow: 0 15px 40px rgba(0,0,0,0.35);
+}
 
-        h1 {
-            margin: 0 0 8px 0;
-            text-align: center;
-            color: #1f2937;
-        }
+.subtitle {
+    color: #666;
+    margin-bottom: 20px;
+    text-align: center;
+    line-height: 1.4;
+    font-size: 15px;
+}
 
-        .subtitle {
-            color: #666;
-            margin-bottom: 28px;
-            text-align: center;
-            line-height: 1.5;
-        }
+.section-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 15px 0 10px;
+    color: #1f2937;
+}
 
-        .section-title {
-            font-size: 16px;
-            font-weight: 700;
-            margin: 20px 0 12px;
-            color: #1f2937;
-        }
+.model-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
 
-        .user-info {
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #555;
-            text-align: center;
-        }
+.model-btn {
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    font-weight: 600;
+    cursor: pointer;
+}
 
-        .model-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 18px;
-        }
+.model-btn:hover {
+    background: #eef2ff;
+}
 
-        .model-btn {
-            width: 100%;
-            padding: 12px 14px;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            background: #f8fafc;
-            color: #1f2937;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s ease;
-        }
+.prompt-preview {
+    width: 100%;
+    min-height: 110px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 14px;
+    background: #f9fafb;
+    margin-bottom: 15px;
+}
 
-        .model-btn:hover {
-            background: #eef2ff;
-            border-color: #c7d2fe;
-        }
+button {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
 
-        .prompt-preview {
-            width: 100%;
-            min-height: 140px;
-            border: 1px solid #d1d5db;
-            border-radius: 12px;
-            padding: 14px;
-            font-size: 14px;
-            line-height: 1.5;
-            resize: none;
-            background: #f9fafb;
-            color: #374151;
-            margin-bottom: 20px;
-        }
+.btn-primary { background: #6c5ce7; color: white; }
+.btn-success { background: #00b894; color: white; }
+.btn-dark { background: #217346; color: white; }
+.btn-ghost { background: #f1f2f7; }
 
-        button {
-            width: 100%;
-            padding: 14px;
-            border-radius: 12px;
-            border: none;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-bottom: 10px;
-        }
+.status-ok {
+    background: #d4edda;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    text-align: center;
+}
 
-        .btn-primary {
-            background: #6c5ce7;
-            color: white;
-        }
+.status-warn {
+    background: #fff3cd;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    text-align: center;
+}
 
-        .btn-primary:hover {
-            background: #5848c2;
-        }
+.footer {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #9ca3af;
+    text-align: center;
+}
 
-        .btn-success {
-            background: #00b894;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #019874;
-        }
-
-        .btn-ghost {
-            background: #f1f2f7;
-            color: #333;
-        }
-
-        .btn-ghost:hover {
-            background: #e9ebf3;
-        }
-
-        .btn-dark {
-            background: #217346;
-            color: white;
-        }
-
-        .btn-dark:hover {
-            background: #1b5f39;
-        }
-
-        .status-ok {
-            background: #d4edda;
-            color: #155724;
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .status-warn {
-            background: #fff3cd;
-            color: #856404;
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .hint-box {
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 14px;
-            color: #4b5563;
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: 18px;
-        }
-
-        .footer {
-            margin-top: 15px;
-            font-size: 12px;
-            color: #9ca3af;
-            text-align: center;
-        }
-
-        a {
-            text-decoration: none;
-        }
-
-        @media (max-width: 640px) {
-            .card {
-                padding: 24px;
-            }
-
-            .model-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .prompt-preview {
-                min-height: 160px;
-            }
-        }
-    </style>
+@media (max-width: 640px) {
+    .model-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 </head>
 
 <body>
 
 <div class="card">
 
-<div style="text-align:center; margin-bottom: 14px;">
+<div style="text-align:center; margin-bottom: 10px;">
     <img src="{{ url_for('static', filename='logo.png') }}" 
-         alt="PromptSheet" 
-         style="max-width: 220px; width: 100%; height: auto;">
+         style="max-width: 200px;">
 </div>
 
-    
-    <div class="subtitle">
-        Planilhas inteligentes geradas com IA. Escolha um modelo pronto ou use como inspiração para criar a sua.
-    </div>
+<div class="subtitle">
+    Crie planilhas com IA em segundos.<br>
+    Escolha um modelo ou personalize do seu jeito.
+</div>
 
-    <div class="section-title">Modelos prontos</div>
+<div class="section-title">Modelos prontos</div>
 
-    <div class="model-grid">
-        <button type="button" class="model-btn" onclick="setPrompt('vendas')">📊 Controle de Vendas</button>
-        <button type="button" class="model-btn" onclick="setPrompt('financeiro')">💰 Controle Financeiro</button>
-        <button type="button" class="model-btn" onclick="setPrompt('estoque')">📦 Controle de Estoque</button>
-        <button type="button" class="model-btn" onclick="setPrompt('veiculos')">🚗 Controle de Veículos</button>
-        <button type="button" class="model-btn" onclick="setPrompt('obra')">🏗️ Controle de Obra</button>
-        <button type="button" class="model-btn" onclick="setPrompt('clientes')">👥 Cadastro de Clientes</button>
-    </div>
+<div class="model-grid">
+    <button class="model-btn" onclick="setPrompt('vendas')">📊 Vendas</button>
+    <button class="model-btn" onclick="setPrompt('financeiro')">💰 Financeiro</button>
+    <button class="model-btn" onclick="setPrompt('estoque')">📦 Estoque</button>
+    <button class="model-btn" onclick="setPrompt('veiculos')">🚗 Veículos</button>
+    <button class="model-btn" onclick="setPrompt('obra')">🏗️ Obra</button>
+    <button class="model-btn" onclick="setPrompt('clientes')">👥 Clientes</button>
+</div>
 
-    <textarea id="promptPreview" class="prompt-preview" readonly>
-Clique em um modelo acima para visualizar um prompt pronto.
-    </textarea>
+<textarea id="promptPreview" class="prompt-preview" readonly></textarea>
 
-    <div class="hint-box">
-        Dica: você pode usar esses exemplos como base e depois ajustar o texto dentro do sistema para deixar a planilha exatamente do seu jeito.
-    </div>
+{% if usuario %}
 
-    {% if usuario %}
+    {% if usuario.pago %}
 
-        <div class="user-info">
-            Logado como <strong>{{ usuario.email }}</strong>
+        <div class="status-ok">
+            ✅ Acesso liberado
         </div>
 
-        {% if usuario.pago %}
+        <a href="/app">
+            <button class="btn-dark">Entrar no sistema</button>
+        </a>
 
-            <div class="status-ok">
-                ✅ Acesso Premium Ativo
-            </div>
-
-            <a href="/app">
-                <button class="btn-dark">Entrar no sistema</button>
-            </a>
-
-            <a href="/download">
-                <button class="btn-success">Baixar Planilha</button>
-            </a>
-
-        {% else %}
-
-            <div class="status-warn">
-                🔒 Você ainda não possui acesso premium.
-            </div>
-
-            <a href="/app">
-                <button class="btn-dark">Criar minha planilha</button>
-            </a>
-
-            <button class="btn-primary" onclick="pagar()">
-                Desbloquear por R$ 1,00
-            </button>
-
-        {% endif %}
-
-        <a href="/logout">
-            <button class="btn-ghost">Sair</button>
+        <a href="/download">
+            <button class="btn-success">Baixar planilha</button>
         </a>
 
     {% else %}
 
-        <a href="/login">
-            <button class="btn-dark">Entrar</button>
+        <div class="status-warn">
+            🔒 Libere o acesso para baixar
+        </div>
+
+        <a href="/app">
+            <button class="btn-dark">Criar minha planilha</button>
         </a>
 
-        <a href="/register">
-            <button class="btn-primary">Criar Conta</button>
-        </a>
+        <button class="btn-primary" onclick="pagar()">
+            Testar por R$ 1,00
+        </button>
 
     {% endif %}
 
-    <div class="footer">
-        Pagamento seguro via Mercado Pago
-    </div>
+    <a href="/logout">
+        <button class="btn-ghost">Sair</button>
+    </a>
+
+{% else %}
+
+    <a href="/login">
+        <button class="btn-dark">Entrar</button>
+    </a>
+
+    <a href="/register">
+        <button class="btn-primary">Criar Conta</button>
+    </a>
+
+{% endif %}
+
+<div class="footer">
+    Pagamento seguro via Mercado Pago
+</div>
 
 </div>
 
 <script>
 function setPrompt(tipo) {
-    let texto = "";
+    const prompts = {
+        vendas: "Controle de vendas com Data, Cliente, Produto, Quantidade e Valor Total",
+        financeiro: "Controle financeiro com Data, Descrição, Categoria e Valor",
+        estoque: "Controle de estoque com Produto, Categoria e Quantidade",
+        veiculos: "Controle de veículos com Placa, Modelo, Km e Revisão",
+        obra: "Controle de obra com Material, Quantidade e Valor",
+        clientes: "Cadastro de clientes com Nome, Telefone e Email"
+    };
 
-    if (tipo === "vendas") {
-        texto = "Planilha de controle de vendas com colunas: Data, Cliente, Produto, Quantidade, Preço Unitário e Valor Total. O cabeçalho deve ficar verde.";
-    }
-
-    if (tipo === "financeiro") {
-        texto = "Planilha de controle financeiro pessoal com colunas: Data, Descrição, Categoria, Forma de Pagamento, Valor e Saldo. O cabeçalho deve ficar verde escuro.";
-    }
-
-    if (tipo === "estoque") {
-        texto = "Planilha de controle de estoque com colunas: Produto, Categoria, Quantidade, Estoque Mínimo e Fornecedor. O cabeçalho deve ficar azul.";
-    }
-
-    if (tipo === "veiculos") {
-        texto = "Planilha de controle de veículos com colunas: Placa, Modelo, Km, Data da Revisão e Observação. O cabeçalho deve ficar vermelho.";
-    }
-
-    if (tipo === "obra") {
-        texto = "Planilha de controle de gastos de obra com colunas: Data, Local, Atividade, Material, Quantidade, Valor e Responsável. O cabeçalho deve ficar cinza.";
-    }
-
-    if (tipo === "clientes") {
-        texto = "Planilha de cadastro de clientes com colunas: Nome, Telefone, E-mail, Cidade e Observação. O cabeçalho deve ficar azul.";
-    }
-
-    document.getElementById("promptPreview").value = texto;
+    document.getElementById("promptPreview").value = prompts[tipo];
 }
 
 function pagar() {
-    fetch("/criar_preferencia", {
-        method: "POST"
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.init_point) {
-            window.location.href = data.init_point;
-        } else {
-            alert("Erro ao gerar pagamento.");
-            console.log(data);
-        }
-    })
-    .catch(error => {
-        console.error(error);
-        alert("Erro ao iniciar pagamento.");
-    });
+    fetch("/criar_preferencia", { method: "POST" })
+    .then(r => r.json())
+    .then(d => window.location.href = d.init_point)
+    .catch(() => alert("Erro ao iniciar pagamento"));
 }
 </script>
 
