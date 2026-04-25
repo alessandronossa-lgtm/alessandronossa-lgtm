@@ -14,110 +14,132 @@ body {
     margin: 0;
     font-family: 'Inter', sans-serif;
     background: linear-gradient(135deg, #1e1e2f, #2c2c54);
-    display: flex;
-    justify-content: center;
-    align-items: center;
     min-height: 100vh;
-    padding: 20px;
+    color: #1f2937;
+    padding: 28px;
+}
+
+.page {
+    width: 100%;
+    min-height: calc(100vh - 56px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .card {
-    background: #ffffff;
-    color: #333;
-    padding: 32px;
-    border-radius: 20px;
+    background: white;
     width: 100%;
-    max-width: 760px; /* mais largo */
-    box-shadow: 0 15px 40px rgba(0,0,0,0.35);
+    max-width: 980px;
+    border-radius: 24px;
+    padding: 42px;
+    box-shadow: 0 18px 45px rgba(0,0,0,0.35);
+}
+
+.logo-wrap {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.logo-wrap img {
+    max-width: 220px;
+    width: 100%;
+    height: auto;
 }
 
 .subtitle {
-    color: #666;
-    margin-bottom: 20px;
+    color: #4b5563;
     text-align: center;
-    line-height: 1.4;
-    font-size: 15px;
+    font-size: 18px;
+    line-height: 1.5;
+    margin-bottom: 30px;
 }
 
 .section-title {
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 700;
-    margin: 15px 0 10px;
-    color: #1f2937;
+    margin-bottom: 14px;
 }
 
 .model-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 15px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
 }
 
 .model-btn {
-    padding: 12px;
-    border-radius: 12px;
+    padding: 16px;
+    border-radius: 14px;
     border: 1px solid #e5e7eb;
     background: #f8fafc;
-    font-weight: 600;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
+    transition: 0.2s;
 }
 
 .model-btn:hover {
-    background: #eef2ff;
+    background: #eefaf2;
+    border-color: #217346;
 }
 
-.prompt-preview {
-    width: 100%;
-    min-height: 110px;
-    border: 1px solid #d1d5db;
-    border-radius: 12px;
-    padding: 12px;
-    font-size: 14px;
-    background: #f9fafb;
-    margin-bottom: 15px;
+.actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
 }
 
 button {
     width: 100%;
-    padding: 14px;
-    border-radius: 12px;
+    padding: 15px;
+    border-radius: 14px;
     border: none;
+    font-size: 15px;
     font-weight: 700;
     cursor: pointer;
-    margin-bottom: 10px;
 }
 
-.btn-primary { background: #6c5ce7; color: white; }
-.btn-success { background: #00b894; color: white; }
-.btn-dark { background: #217346; color: white; }
-.btn-ghost { background: #f1f2f7; }
-
-.status-ok {
-    background: #d4edda;
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    text-align: center;
+.btn-dark {
+    background: #217346;
+    color: white;
 }
 
-.status-warn {
-    background: #fff3cd;
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    text-align: center;
+.btn-primary {
+    background: #6c5ce7;
+    color: white;
+}
+
+.btn-ghost {
+    background: #f1f2f7;
+    color: #333;
 }
 
 .footer {
-    margin-top: 10px;
+    margin-top: 20px;
     font-size: 12px;
     color: #9ca3af;
     text-align: center;
 }
 
-@media (max-width: 640px) {
+a { text-decoration: none; }
+
+@media (max-width: 760px) {
+    body { padding: 16px; }
+
+    .card { padding: 28px; }
+
     .model-grid {
         grid-template-columns: 1fr;
+    }
+
+    .actions {
+        grid-template-columns: 1fr;
+    }
+
+    .subtitle {
+        font-size: 16px;
     }
 }
 </style>
@@ -125,88 +147,63 @@ button {
 
 <body>
 
-<div class="card">
+<div class="page">
+    <div class="card">
 
-<div style="text-align:center; margin-bottom: 10px;">
-    <img src="{{ url_for('static', filename='logo.png') }}" 
-         style="max-width: 200px;">
-</div>
-
-<div class="subtitle">
-    Crie planilhas com IA em segundos.<br>
-    Escolha um modelo ou personalize do seu jeito.
-</div>
-
-<div class="section-title">Modelos prontos</div>
-
-<div class="model-grid">
-    <button class="model-btn" onclick="window.location.href='/login'")">📊 Vendas</button>
-    <button class="model-btn" onclick="setPrompt('financeiro')">💰 Financeiro</button>
-    <button class="model-btn" onclick="setPrompt('estoque')">📦 Estoque</button>
-    <button class="model-btn" onclick="setPrompt('veiculos')">🚗 Veículos</button>
-    <button class="model-btn" onclick="setPrompt('obra')">🏗️ Obra</button>
-    <button class="model-btn" onclick="setPrompt('clientes')">👥 Clientes</button>
-</div>
-
-
-
-{% if usuario %}
-
-    {% if usuario.pago %}
-
-        <div class="status-ok">
-            ✅ Acesso liberado
+        <div class="logo-wrap">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="PromptSheet">
         </div>
 
-        <a href="/app">
-            <button class="btn-dark">Entrar no sistema</button>
-        </a>
-
-        <a href="/download">
-            <button class="btn-success">Baixar planilha</button>
-        </a>
-
-    {% else %}
-
-        <div class="status-warn">
-            🔒 Libere o acesso para baixar
+        <div class="subtitle">
+            Crie planilhas com IA em segundos.<br>
+            Escolha um modelo pronto ou personalize do seu jeito.
         </div>
 
-        <a href="/app">
-            <button class="btn-dark">Criar minha planilha</button>
-        </a>
+        <div class="section-title">Modelos prontos</div>
 
-        <button class="btn-primary" onclick="pagar()">
-            Testar por R$ 1,00
-        </button>
+        <div class="model-grid">
+            <button type="button" class="model-btn" onclick="setPrompt('vendas')">📊 Vendas</button>
+            <button type="button" class="model-btn" onclick="setPrompt('financeiro')">💰 Financeiro</button>
+            <button type="button" class="model-btn" onclick="setPrompt('estoque')">📦 Estoque</button>
+            <button type="button" class="model-btn" onclick="setPrompt('veiculos')">🚗 Veículos</button>
+            <button type="button" class="model-btn" onclick="setPrompt('obra')">🏗️ Obra</button>
+            <button type="button" class="model-btn" onclick="setPrompt('clientes')">👥 Clientes</button>
+        </div>
 
-    {% endif %}
+        {% if usuario %}
 
-    <a href="/logout">
-        <button class="btn-ghost">Sair</button>
-    </a>
+            <div class="actions">
+                <a href="/app">
+                    <button class="btn-dark">Entrar no sistema</button>
+                </a>
 
-{% else %}
+                <a href="/logout">
+                    <button class="btn-ghost">Sair</button>
+                </a>
+            </div>
 
-    <a href="/login">
-        <button class="btn-dark">Entrar</button>
-    </a>
+        {% else %}
 
-    <a href="/register">
-        <button class="btn-primary">Criar Conta</button>
-    </a>
+            <div class="actions">
+                <a href="/login">
+                    <button class="btn-dark">Entrar</button>
+                </a>
 
-{% endif %}
+                <a href="/register">
+                    <button class="btn-primary">Criar Conta</button>
+                </a>
+            </div>
 
-<div class="footer">
-    Pagamento seguro via Mercado Pago
-</div>
+        {% endif %}
 
+        <div class="footer">
+            Pagamento seguro via Mercado Pago
+        </div>
+
+    </div>
 </div>
 
 <script>
-
-    <script>
 function setPrompt(tipo) {
     const prompts = {
         vendas: "Planilha de controle de vendas com colunas: Data, Cliente, Produto, Quantidade, Preço Unitário e Valor Total. O cabeçalho deve ficar verde.",
@@ -219,17 +216,6 @@ function setPrompt(tipo) {
 
     localStorage.setItem("promptsheet_modelo_prompt", prompts[tipo]);
     window.location.href = "/login";
-}
-</script>
-
-    document.getElementById("promptPreview").value = prompts[tipo];
-}
-
-function pagar() {
-    fetch("/criar_preferencia", { method: "POST" })
-    .then(r => r.json())
-    .then(d => window.location.href = d.init_point)
-    .catch(() => alert("Erro ao iniciar pagamento"));
 }
 </script>
 
