@@ -50,14 +50,14 @@
     }
 
     .container {
-      max-width: 1100px;
+      max-width: 1250px;
       margin: 32px auto;
       padding: 0 20px;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
+      grid-template-columns: 1fr 1fr;
       gap: 24px;
     }
 
@@ -306,9 +306,7 @@
 
 
       
-
       
-      <p class="brand-sub">Sua planilha, a um texto de distância.</p>
     </div>
     <div>
       <a href="{{ url_for('logout') }}">Sair</a>
@@ -370,13 +368,14 @@
         </form>
 
         <div class="examples">
-          <h3>Exemplos de prompt</h3>
-          <ul>
-            <li>Planilha de vendas com colunas: Data, Cliente, Produto, Quantidade, Preço Unitário, Valor Total.</li>
-            <li>Planilha de estoque com colunas: Data, Produto, Categoria, Quantidade, Estoque Mínimo, Fornecedor.</li>
-            <li>Fluxo de caixa com colunas: Data, Descrição, Categoria, Entrada, Saída, Saldo.</li>
-          </ul>
-        </div>
+  <h3>💡 Como pedir sua planilha</h3>
+  <ul>
+    <li><b>Colunas:</b> colunas: Data, Cliente, Produto, Valor</li>
+    <li><b>Largura:</b> larguras: Produto 30, Observação 50</li>
+    <li><b>Cor:</b> cabeçalho verde / azul / vermelho</li>
+    <li><b>Extras:</b> pode pedir totais, cálculos e organização</li>
+  </ul>
+</div>
       </div>
 
       <div class="card">
