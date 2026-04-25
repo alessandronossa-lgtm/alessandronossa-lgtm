@@ -206,6 +206,21 @@ button {
 
 <script>
 
+    <script>
+function setPrompt(tipo) {
+    const prompts = {
+        vendas: "Planilha de controle de vendas com colunas: Data, Cliente, Produto, Quantidade, Preço Unitário e Valor Total. O cabeçalho deve ficar verde.",
+        financeiro: "Planilha de controle financeiro pessoal com colunas: Data, Descrição, Categoria, Forma de Pagamento, Valor e Saldo. O cabeçalho deve ficar verde escuro.",
+        estoque: "Planilha de controle de estoque com colunas: Produto, Categoria, Quantidade, Estoque Mínimo e Fornecedor. O cabeçalho deve ficar azul.",
+        veiculos: "Planilha de controle de veículos com colunas: Placa, Modelo, Km, Data da Revisão e Observação. O cabeçalho deve ficar vermelho.",
+        obra: "Planilha de controle de gastos de obra com colunas: Data, Local, Atividade, Material, Quantidade, Valor e Responsável. O cabeçalho deve ficar cinza.",
+        clientes: "Planilha de cadastro de clientes com colunas: Nome, Telefone, E-mail, Cidade e Observação. O cabeçalho deve ficar azul."
+    };
+
+    localStorage.setItem("promptsheet_modelo_prompt", prompts[tipo]);
+    window.location.href = "/login";
+}
+</script>
 
     document.getElementById("promptPreview").value = prompts[tipo];
 }
