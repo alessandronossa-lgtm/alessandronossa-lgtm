@@ -140,7 +140,7 @@ button {
 <div class="section-title">Modelos prontos</div>
 
 <div class="model-grid">
-    <button class="model-btn" onclick="setPrompt('vendas')">📊 Vendas</button>
+    <button class="model-btn" onclick="window.location.href='/login'")">📊 Vendas</button>
     <button class="model-btn" onclick="setPrompt('financeiro')">💰 Financeiro</button>
     <button class="model-btn" onclick="setPrompt('estoque')">📦 Estoque</button>
     <button class="model-btn" onclick="setPrompt('veiculos')">🚗 Veículos</button>
@@ -148,7 +148,7 @@ button {
     <button class="model-btn" onclick="setPrompt('clientes')">👥 Clientes</button>
 </div>
 
-<textarea id="promptPreview" class="prompt-preview" readonly></textarea>
+
 
 {% if usuario %}
 
@@ -205,15 +205,7 @@ button {
 </div>
 
 <script>
-function setPrompt(tipo) {
-    const prompts = {
-        vendas: "Controle de vendas com Data, Cliente, Produto, Quantidade e Valor Total",
-        financeiro: "Controle financeiro com Data, Descrição, Categoria e Valor",
-        estoque: "Controle de estoque com Produto, Categoria e Quantidade",
-        veiculos: "Controle de veículos com Placa, Modelo, Km e Revisão",
-        obra: "Controle de obra com Material, Quantidade e Valor",
-        clientes: "Cadastro de clientes com Nome, Telefone e Email"
-    };
+
 
     document.getElementById("promptPreview").value = prompts[tipo];
 }
