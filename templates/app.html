@@ -447,5 +447,19 @@
       }
     }
   </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const promptSalvo = localStorage.getItem("promptsheet_modelo_prompt");
+    const campoPrompt = document.getElementById("prompt");
+
+    if (promptSalvo && campoPrompt && !campoPrompt.value.trim()) {
+        campoPrompt.value = promptSalvo;
+        localStorage.removeItem("promptsheet_modelo_prompt");
+    }
+});
+</script>
+
+  
 </body>
 </html>
