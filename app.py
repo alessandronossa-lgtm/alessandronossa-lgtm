@@ -396,6 +396,42 @@ def extract_explicit_columns(prompt: str):
     return []
 
 
+
+def extrair_colunas(texto):
+    texto = (texto or "").lower()
+
+    palavras_chave = {
+        "data": "Data",
+        "produto": "Produto",
+        "cliente": "Cliente",
+        "quantidade": "Quantidade",
+        "qtd": "Quantidade",
+        "valor": "Valor",
+        "preço": "Valor",
+        "preco": "Valor",
+        "total": "Total",
+        "entrada": "Entrada",
+        "saida": "Saída",
+        "km": "Km",
+        "placa": "Placa",
+        "modelo": "Modelo"
+    }
+
+    colunas = []
+
+    for chave, nome in palavras_chave.items():
+        if chave in texto:
+            colunas.append(nome)
+
+    if not colunas:
+        colunas = ["Item", "Descrição", "Valor"]
+
+    return list(dict.fromkeys(colunas))
+
+
+
+
+
 def infer_columns_from_prompt(prompt: str):
     p = normalize_text(prompt)
 
@@ -426,11 +462,24 @@ def infer_columns_from_prompt(prompt: str):
     return ["Data", "Descrição", "Valor"]
 
 
+
+
+
+
+
 def detect_columns(prompt: str):
     explicit = extract_explicit_columns(prompt)
     if explicit:
         return explicit
+
+    inteligentes = extrair_colunas(prompt)
+    if inteligentes:
+        return inteligentes
+
     return infer_columns_from_prompt(prompt)
+
+
+
 
 
 def is_money_column(name: str) -> bool:
@@ -692,6 +741,53 @@ def fill_example_data(ws, columns, prompt):
                 cell.value = valor
 
     aplicar_largura_automatica(ws, columns, prompt)
+
+
+
+
+
+def extrair_colunas(texto):
+    texto = (texto or "").lower()
+
+    palavras_chave = {
+        "data": "Data",
+        "produto": "Produto",
+        "cliente": "Cliente",
+        "nome": "Nome",
+        "quantidade": "Quantidade",
+        "qtd": "Quantidade",
+        "valor": "Valor",
+        "preço": "Valor",
+        "preco": "Valor",
+        "total": "Total",
+        "entrada": "Entrada",
+        "saida": "Saída",
+        "saída": "Saída",
+        "km": "Km",
+        "placa": "Placa",
+        "modelo": "Modelo",
+        "descricao": "Descrição",
+        "descrição": "Descrição",
+        "observacao": "Observação",
+        "observação": "Observação",
+        "fornecedor": "Fornecedor",
+        "categoria": "Categoria",
+        "telefone": "Telefone",
+        "email": "E-mail",
+        "e-mail": "E-mail"
+    }
+
+    colunas = []
+
+    for chave, nome_coluna in palavras_chave.items():
+        if chave in texto:
+            colunas.append(nome_coluna)
+
+    if not colunas:
+        colunas = ["Item", "Descrição", "Valor"]
+
+    return list(dict.fromkeys(colunas))
+
 
 
 def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
