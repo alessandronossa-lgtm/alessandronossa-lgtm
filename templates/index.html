@@ -7,6 +7,113 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
+.fun-banner {
+    background: linear-gradient(160deg, #ecfdf5, #ffffff);
+    position: relative;
+    overflow: hidden;
+}
+
+.fun-banner::before {
+    content: "✨";
+    position: absolute;
+    top: 12px;
+    right: 18px;
+    font-size: 28px;
+}
+
+.tag-ai {
+    display: inline-block;
+    background: #217346;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 800;
+    margin-bottom: 14px;
+}
+
+.mini-chat {
+    background: #fff8e7;
+    border: 1px solid #f3d19c;
+    border-radius: 16px;
+    padding: 14px;
+    text-align: left;
+    margin-bottom: 10px;
+    transform: rotate(-1deg);
+}
+
+.chat-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #8a5a00;
+    margin-bottom: 6px;
+}
+
+.chat-text {
+    font-size: 14px;
+    line-height: 1.4;
+    color: #374151;
+}
+
+.arrow-down {
+    font-size: 26px;
+    margin: 8px 0;
+}
+
+.sheet-demo {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #d1fae5;
+    padding: 12px;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+    margin-bottom: 14px;
+}
+
+.sheet-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: #217346;
+    margin-bottom: 8px;
+}
+
+.sheet-row {
+    display: grid;
+    grid-template-columns: 1.4fr 0.6fr 0.9fr;
+    font-size: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sheet-row span {
+    padding: 6px 4px;
+}
+
+.sheet-row.header {
+    background: #217346;
+    color: white;
+    font-weight: 800;
+    border-radius: 8px;
+    border-bottom: none;
+}
+
+.fun-price {
+    background: #217346;
+    color: white;
+    border-radius: 18px;
+    padding: 16px;
+    font-weight: 900;
+    font-size: 20px;
+    box-shadow: 0 10px 20px rgba(33,115,70,0.22);
+}
+
+.fun-price small {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+    opacity: .9;
+}
+
+    
 <style>
 * { box-sizing: border-box; }
 
@@ -249,52 +356,40 @@ a { text-decoration: none; }
                 </div>
             </div>
 
-<div class="visual-card">
+<div class="visual-card fun-banner">
+    <div class="tag-ai">🤖 IA criando sua planilha</div>
 
-    <div style="font-size:18px;font-weight:800;color:#217346;margin-bottom:10px;">
-        🤖 Inteligência Artificial trabalhando pra você
-    </div>
-
-    <div style="
-        background:white;
-        border-radius:16px;
-        padding:14px;
-        font-size:14px;
-        line-height:1.5;
-        margin-bottom:14px;
-        border:1px solid #d1fae5;
-    ">
-        📝 Exemplo de pedido:<br>
-        “Controle de vendas com produto, quantidade e valor”
-    </div>
-
-    <div style="
-        background:#ecfdf5;
-        border-radius:16px;
-        padding:14px;
-        font-size:14px;
-        font-weight:700;
-        color:#065f46;
-        border:1px solid #a7f3d0;
-        margin-bottom:14px;
-    ">
-        ⚡ Em segundos a planilha já está pronta
-    </div>
-
-    <div style="
-        background:#217346;
-        color:white;
-        border-radius:18px;
-        padding:18px;
-        font-weight:800;
-        font-size:22px;
-    ">
-        Teste agora por R$1
-        <div style="font-size:12px;font-weight:600;margin-top:4px;">
-            Acesso por 24 horas
+    <div class="mini-chat">
+        <div class="chat-label">Você escreve:</div>
+        <div class="chat-text">
+            “Quero um controle de vendas com produto, quantidade e valor”
         </div>
     </div>
 
+    <div class="arrow-down">⬇</div>
+
+    <div class="sheet-demo">
+        <div class="sheet-title">PLANILHA PRONTA</div>
+        <div class="sheet-row header">
+            <span>Produto</span><span>Qtd</span><span>Valor</span>
+        </div>
+        <div class="sheet-row">
+            <span>Produto A</span><span>10</span><span>R$ 250</span>
+        </div>
+        <div class="sheet-row">
+            <span>Produto B</span><span>5</span><span>R$ 200</span>
+        </div>
+    </div>
+
+    <div class="fun-price">
+        Só R$1 para testar ✨
+        <small>Acesso por 24 horas</small>
+    </div>
+</div>
+
+
+
+            
 </div>
             
                     </div>
