@@ -5,7 +5,7 @@
 <title>PromptSheet</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
 <style>
 * { box-sizing: border-box; }
@@ -38,66 +38,120 @@ body {
 
 .logo-wrap {
     text-align: center;
-    margin-bottom: 18px;
+    margin-bottom: 22px;
 }
 
 .logo-wrap img {
-    max-width: 220px;
+    max-width: 210px;
     width: 100%;
     height: auto;
 }
 
-.subtitle {
-    color: #4b5563;
-    text-align: center;
-    font-size: 18px;
-    line-height: 1.5;
-    margin-bottom: 30px;
-}
-
-.section-title {
-    font-size: 17px;
-    font-weight: 700;
-    margin-bottom: 14px;
-}
-
-.model-grid {
+.hero {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 28px;
+    align-items: center;
     margin-bottom: 28px;
 }
 
-.model-btn {
-    padding: 16px;
-    border-radius: 14px;
-    border: 1px solid #e5e7eb;
-    background: #f8fafc;
+.hero-title {
+    font-size: 46px;
+    line-height: 1.05;
+    margin: 0 0 16px;
+    font-weight: 800;
     color: #111827;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: 0.2s;
 }
 
-.model-btn:hover {
+.hero-title span {
+    color: #217346;
+}
+
+.hero-text {
+    font-size: 18px;
+    line-height: 1.5;
+    color: #4b5563;
+    margin-bottom: 18px;
+}
+
+.benefits {
+    display: grid;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.benefit {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.visual-card {
     background: #eefaf2;
-    border-color: #217346;
+    border: 1px solid #b7ebc6;
+    border-radius: 22px;
+    padding: 24px;
+    text-align: center;
+}
+
+.visual-icon {
+    font-size: 56px;
+    margin-bottom: 10px;
+}
+
+.visual-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #217346;
+    margin-bottom: 12px;
+}
+
+.visual-box {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #d1fae5;
+    padding: 16px;
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.5;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.price-box {
+    margin-top: 16px;
+    background: #217346;
+    color: white;
+    border-radius: 18px;
+    padding: 16px;
+    font-weight: 800;
+    font-size: 20px;
+}
+
+.price-box small {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.9;
+    margin-top: 4px;
 }
 
 .actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 14px;
+    margin-top: 18px;
 }
 
 button {
     width: 100%;
-    padding: 15px;
+    padding: 16px;
     border-radius: 14px;
     border: none;
     font-size: 15px;
-    font-weight: 700;
+    font-weight: 800;
     cursor: pointer;
 }
 
@@ -117,35 +171,14 @@ button {
 }
 
 .footer {
-    margin-top: 20px;
+    margin-top: 18px;
     font-size: 12px;
     color: #9ca3af;
     text-align: center;
 }
 
-a { text-decoration: none; }
-
-@media (max-width: 760px) {
-    body { padding: 16px; }
-
-    .card { padding: 28px; }
-
-    .model-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .actions {
-        grid-template-columns: 1fr;
-    }
-
-    .subtitle {
-        font-size: 16px;
-    }
-}
-
-
 .versiculo {
-    margin-top: 18px;
+    margin-top: 14px;
     text-align: center;
     font-size: 13px;
     color: #9ca3af;
@@ -159,7 +192,32 @@ a { text-decoration: none; }
     color: #6b7280;
     margin-top: 4px;
 }
-    
+
+a { text-decoration: none; }
+
+@media (max-width: 820px) {
+    body { padding: 16px; }
+
+    .card { padding: 28px; }
+
+    .hero {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-title {
+        font-size: 34px;
+        text-align: center;
+    }
+
+    .hero-text {
+        text-align: center;
+        font-size: 16px;
+    }
+
+    .actions {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 </head>
 
@@ -172,36 +230,47 @@ a { text-decoration: none; }
             <img src="{{ url_for('static', filename='logo.png') }}" alt="PromptSheet">
         </div>
 
-        <div class="subtitle">
-    Pare de perder tempo no Excel.<br>
-    Digite o que precisa e receba sua planilha pronta em segundos.
-</div>
+        <div class="hero">
+            <div>
+                <h1 class="hero-title">
+                    Digite o que precisa.<br>
+                    <span>Receba sua planilha pronta.</span>
+                </h1>
 
-<div class="section-title">
-    Descreva a planilha que você precisa<br>
-    <span style="font-weight:400; font-size:14px; color:#6b7280;">
-        Use os exemplos abaixo se quiser se inspirar
-    </span>
-</div>
+                <div class="hero-text">
+                    Chega de perder tempo criando planilhas do zero.
+                    A IA monta sua planilha em segundos, do jeito que você precisa.
+                </div>
 
-<div style="margin-bottom:12px; font-size:14px; color:#6b7280;">
-💡 Exemplo: "Controle de vendas com colunas: produto, quantidade e valor"
-</div>
-        
-        <div class="model-grid">
-            <button type="button" class="model-btn" onclick="setPrompt('vendas')">📊 Vendas</button>
-            <button type="button" class="model-btn" onclick="setPrompt('financeiro')">💰 Financeiro</button>
-            <button type="button" class="model-btn" onclick="setPrompt('estoque')">📦 Estoque</button>
-            <button type="button" class="model-btn" onclick="setPrompt('veiculos')">🚗 Veículos</button>
-            <button type="button" class="model-btn" onclick="setPrompt('obra')">🏗️ Obra</button>
-            <button type="button" class="model-btn" onclick="setPrompt('clientes')">👥 Clientes</button>
+                <div class="benefits">
+                    <div class="benefit">⚡ Rápido e fácil</div>
+                    <div class="benefit">📊 Personalizado para sua necessidade</div>
+                    <div class="benefit">✅ Sem fórmula. Sem complicação.</div>
+                </div>
+            </div>
+
+            <div class="visual-card">
+                <div class="visual-icon">🤖📊</div>
+                <div class="visual-title">A IA faz por você</div>
+
+                <div class="visual-box">
+                    Exemplo:<br>
+                    “Controle de vendas com colunas:
+                    Data, Produto, Quantidade e Valor”
+                </div>
+
+                <div class="price-box">
+                    Teste por R$ 1,00
+                    <small>Acesso por 24 horas</small>
+                </div>
+            </div>
         </div>
 
         {% if usuario %}
 
             <div class="actions">
                 <a href="/app">
-                    <button class="btn-dark">Entrar no sistema</button>
+                    <button class="btn-dark">Criar minha planilha agora</button>
                 </a>
 
                 <a href="/logout">
@@ -228,28 +297,12 @@ a { text-decoration: none; }
         </div>
 
         <div class="versiculo">
-    ✨ “Até aqui nos ajudou o Senhor”<br>
-    <span>1 Samuel 7:12</span>
-</div>
+            ✨ “Até aqui nos ajudou o Senhor”<br>
+            <span>1 Samuel 7:12</span>
+        </div>
 
     </div>
 </div>
-
-<script>
-function setPrompt(tipo) {
-    const prompts = {
-        vendas: "Planilha de controle de vendas com colunas: Data, Cliente, Produto, Quantidade, Preço Unitário e Valor Total. O cabeçalho deve ficar verde.",
-        financeiro: "Planilha de controle financeiro pessoal com colunas: Data, Descrição, Categoria, Forma de Pagamento, Valor e Saldo. O cabeçalho deve ficar verde escuro.",
-        estoque: "Planilha de controle de estoque com colunas: Produto, Categoria, Quantidade, Estoque Mínimo e Fornecedor. O cabeçalho deve ficar azul.",
-        veiculos: "Planilha de controle de veículos com colunas: Placa, Modelo, Km, Data da Revisão e Observação. O cabeçalho deve ficar vermelho.",
-        obra: "Planilha de controle de gastos de obra com colunas: Data, Local, Atividade, Material, Quantidade, Valor e Responsável. O cabeçalho deve ficar cinza.",
-        clientes: "Planilha de cadastro de clientes com colunas: Nome, Telefone, E-mail, Cidade e Observação. O cabeçalho deve ficar azul."
-    };
-
-    localStorage.setItem("promptsheet_modelo_prompt", prompts[tipo]);
-    window.location.href = "/login";
-}
-</script>
 
 </body>
 </html>
