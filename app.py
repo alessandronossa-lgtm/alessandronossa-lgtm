@@ -799,7 +799,43 @@ def fill_example_data(ws, columns, prompt):
 
 
 def extrair_colunas(texto):
-    texto = (texto or "").lower()
+    texto = normalize_text(texto or "")
+
+    modelos = {
+        "vendas": ["Data", "Cliente", "Produto", "Quantidade", "Valor Unitário", "Valor Total"],
+        "estoque": ["Produto", "Categoria", "Quantidade", "Estoque Mínimo", "Fornecedor"],
+        "financeiro": ["Data", "Descrição", "Categoria", "Entrada", "Saída", "Saldo"],
+        "obra": ["Data", "Local", "Atividade", "Material", "Quantidade", "Valor", "Responsável"],
+        "veiculos": ["Placa", "Modelo", "Km", "Data da Revisão", "Observação"],
+        "clientes": ["Nome", "Telefone", "E-mail", "Cidade", "Observação"],
+        "funcionarios": ["Nome", "Cargo", "Telefone", "E-mail", "Salário"],
+        "agenda": ["Data", "Horário", "Compromisso", "Responsável", "Observação"],
+        "orcamento": ["Item", "Descrição", "Quantidade", "Valor Unitário", "Valor Total"],
+        "compras": ["Data", "Produto", "Fornecedor", "Quantidade", "Valor"],
+        "despesas": ["Data", "Descrição", "Categoria", "Valor", "Forma de Pagamento"],
+        "servicos": ["Data", "Cliente", "Serviço", "Valor", "Status"],
+        "entregas": ["Data", "Cliente", "Endereço", "Produto", "Status"],
+    }
+
+    gatilhos = {
+        "vendas": ["venda", "vendas", "pedido", "pedidos"],
+        "estoque": ["estoque", "mercadoria", "produto", "produtos"],
+        "financeiro": ["financeiro", "fluxo de caixa", "caixa", "entrada", "saida", "saldo"],
+        "obra": ["obra", "construcao", "material", "materiais", "gasto de obra", "gastos de obra"],
+        "veiculos": ["veiculo", "veiculos", "carro", "carros", "frota", "placa", "km", "revisao"],
+        "clientes": ["cliente", "clientes", "cadastro de clientes"],
+        "funcionarios": ["funcionario", "funcionarios", "colaborador", "colaboradores", "equipe"],
+        "agenda": ["agenda", "compromisso", "compromissos", "horario", "horarios"],
+        "orcamento": ["orcamento", "orcamentos", "cotacao", "cotacoes", "proposta", "propostas"],
+        "compras": ["compra", "compras", "fornecedor", "fornecedores"],
+        "despesas": ["despesa", "despesas", "gasto", "gastos"],
+        "servicos": ["servico", "servicos", "atendimento", "atendimentos"],
+        "entregas": ["entrega", "entregas", "delivery"],
+    }
+
+    for tipo, palavras in gatilhos.items():
+        if any(p in texto for p in palavras):
+            return modelos[tipo]
 
     palavras_chave = {
         "data": "Data",
@@ -809,38 +845,35 @@ def extrair_colunas(texto):
         "quantidade": "Quantidade",
         "qtd": "Quantidade",
         "valor": "Valor",
-        "preço": "Valor",
         "preco": "Valor",
         "total": "Total",
         "entrada": "Entrada",
         "saida": "Saída",
-        "saída": "Saída",
+        "saldo": "Saldo",
         "km": "Km",
         "placa": "Placa",
         "modelo": "Modelo",
         "descricao": "Descrição",
-        "descrição": "Descrição",
         "observacao": "Observação",
-        "observação": "Observação",
         "fornecedor": "Fornecedor",
         "categoria": "Categoria",
         "telefone": "Telefone",
         "email": "E-mail",
-        "e-mail": "E-mail"
+        "cidade": "Cidade",
+        "responsavel": "Responsável",
+        "status": "Status",
     }
 
     colunas = []
 
-    for chave, nome_coluna in palavras_chave.items():
+    for chave, nome in palavras_chave.items():
         if chave in texto:
-            colunas.append(nome_coluna)
+            colunas.append(nome)
 
-    if not colunas:
-        colunas = ["Item", "Descrição", "Valor"]
+    if colunas:
+        return list(dict.fromkeys(colunas))
 
-    return list(dict.fromkeys(colunas))
-
-
+    return ["Item", "Descrição", "Quantidade", "Valor"]
 
 def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
     columns = detect_columns(prompt)
