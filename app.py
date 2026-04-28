@@ -397,89 +397,6 @@ def extract_explicit_columns(prompt: str):
 
 
 
-def extrair_colunas(texto):
-    texto_original = texto or ""
-    texto = normalize_text(texto_original)
-
-    modelos = {
-        "vendas": ["Data", "Cliente", "Produto", "Quantidade", "Valor Unitário", "Valor Total"],
-        "estoque": ["Produto", "Categoria", "Quantidade", "Estoque Mínimo", "Fornecedor"],
-        "financeiro": ["Data", "Descrição", "Categoria", "Entrada", "Saída", "Saldo"],
-        "obra": ["Data", "Local", "Atividade", "Material", "Quantidade", "Valor", "Responsável"],
-        "veiculos": ["Placa", "Modelo", "Km", "Data da Revisão", "Observação"],
-        "clientes": ["Nome", "Telefone", "E-mail", "Cidade", "Observação"],
-        "funcionarios": ["Nome", "Cargo", "Telefone", "E-mail", "Salário"],
-        "agenda": ["Data", "Horário", "Compromisso", "Responsável", "Observação"],
-        "orcamento": ["Item", "Descrição", "Quantidade", "Valor Unitário", "Valor Total"],
-        "compras": ["Data", "Produto", "Fornecedor", "Quantidade", "Valor"],
-        "despesas": ["Data", "Descrição", "Categoria", "Valor", "Forma de Pagamento"],
-        "servicos": ["Data", "Cliente", "Serviço", "Valor", "Status"],
-        "entregas": ["Data", "Cliente", "Endereço", "Produto", "Status"],
-    }
-
-    gatilhos = {
-        "vendas": ["venda", "vendas", "pedido", "pedidos"],
-        "estoque": ["estoque", "mercadoria", "produto"],
-        "financeiro": ["financeiro", "fluxo de caixa", "caixa", "entrada", "saida", "saldo"],
-        "obra": ["obra", "construcao", "material", "gasto de obra"],
-        "veiculos": ["veiculo", "veiculos", "carro", "frota", "placa", "km", "revisao"],
-        "clientes": ["cliente", "clientes", "cadastro"],
-        "funcionarios": ["funcionario", "funcionarios", "colaborador", "equipe"],
-        "agenda": ["agenda", "compromisso", "horario"],
-        "orcamento": ["orcamento", "cotacao", "proposta"],
-        "compras": ["compra", "compras", "fornecedor"],
-        "despesas": ["despesa", "despesas", "gasto", "gastos"],
-        "servicos": ["servico", "servicos", "atendimento"],
-        "entregas": ["entrega", "entregas", "delivery"],
-    }
-
-    for tipo, palavras in gatilhos.items():
-        if any(p in texto for p in palavras):
-            return modelos[tipo]
-
-    palavras_chave = {
-        "data": "Data",
-        "produto": "Produto",
-        "cliente": "Cliente",
-        "nome": "Nome",
-        "quantidade": "Quantidade",
-        "qtd": "Quantidade",
-        "valor": "Valor",
-        "preco": "Valor",
-        "preço": "Valor",
-        "total": "Total",
-        "entrada": "Entrada",
-        "saida": "Saída",
-        "saída": "Saída",
-        "saldo": "Saldo",
-        "km": "Km",
-        "placa": "Placa",
-        "modelo": "Modelo",
-        "descricao": "Descrição",
-        "descrição": "Descrição",
-        "observacao": "Observação",
-        "observação": "Observação",
-        "fornecedor": "Fornecedor",
-        "categoria": "Categoria",
-        "telefone": "Telefone",
-        "email": "E-mail",
-        "e-mail": "E-mail",
-        "cidade": "Cidade",
-        "responsavel": "Responsável",
-        "responsável": "Responsável",
-        "status": "Status",
-    }
-
-    colunas = []
-
-    for chave, nome in palavras_chave.items():
-        if chave in texto:
-            colunas.append(nome)
-
-    if colunas:
-        return list(dict.fromkeys(colunas))
-
-    return ["Item", "Descrição", "Quantidade", "Valor"]
 
 
 
@@ -642,6 +559,12 @@ def aplicar_largura_automatica(ws, columns, prompt=None):
         ws.column_dimensions[get_column_letter(col_idx)].width = width
 
 
+
+
+
+
+
+
 def inserir_logo(ws):
     try:
         logo_path = os.path.join(app.root_path, "static", "logo.png")
@@ -688,6 +611,14 @@ def style_sheet(ws, columns, prompt, project_name):
         for col in range(1, len(columns) + 1):
             cell = ws.cell(row=row, column=col)
             cell.border = border
+
+
+
+
+
+
+
+            
 
             n = normalize_text(columns[col - 1])
 
