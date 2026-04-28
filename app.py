@@ -206,6 +206,12 @@ def to_decimal(value, fallback: Decimal) -> Decimal:
 # MOTOR DE GERAÇÃO DE PLANILHA
 # =====================================================
 
+def extrair_percentual_comissao(prompt: str):
+    match = re.search(r"(\d+)\s*%", prompt)
+    if match:
+        return int(match.group(1)) / 100
+    return None
+
 def normalize_text(text: str) -> str:
     if not text:
         return ""
@@ -439,15 +445,20 @@ def infer_columns_from_prompt(prompt: str):
 def detect_columns(prompt: str):
     explicit = extract_explicit_columns(prompt)
     if explicit:
-        return explicit
+        cols = explicit
+    else:
+        inteligentes = extrair_colunas(prompt)
+        if inteligentes:
+            cols = inteligentes
+        else:
+            cols = infer_columns_from_prompt(prompt)
 
-    inteligentes = extrair_colunas(prompt)
-    if inteligentes:
-        return inteligentes
+    # 👇 NOVO BLOCO PRO
+    if "comissao" in normalize_text(prompt):
+        if "Comissão" not in cols:
+            cols.append("Comissão")
 
-    return infer_columns_from_prompt(prompt)
-
-
+    return cols
 
 
 
@@ -685,6 +696,7 @@ def style_sheet(ws, columns, prompt, project_name):
     return ws
 
 
+
 def fill_example_data(ws, columns, prompt):
     for row in (6, 7):
         for idx, col in enumerate(columns, start=1):
@@ -720,14 +732,20 @@ def fill_example_data(ws, columns, prompt):
                 else:
                     cell.value = None
 
+            elif nome == "comissao":
+                perc = extrair_percentual_comissao(prompt)
+                total_idx = col_index(columns, "Valor Total")
+
+                if perc and total_idx:
+                    total_letter = get_column_letter(total_idx)
+                    cell.value = f"={total_letter}{row}*{perc}"
+                else:
+                    cell.value = None
+
             else:
                 cell.value = valor
 
     aplicar_largura_automatica(ws, columns, prompt)
-
-
-
-
 
 def extrair_colunas(texto):
     texto = normalize_text(texto or "")
