@@ -707,7 +707,8 @@ def fill_example_data(ws, columns, prompt):
 
             if nome == "valor total":
                 qtd_idx = col_index(columns, "Quantidade")
-                preco_idx = col_index(columns, "Preço Unitário")
+                preco_idx = col_index(columns, "Preço Unitário") or col_index(columns, "Valor Unitário")
+                
 
                 if qtd_idx and preco_idx:
                     qtd_letter = get_column_letter(qtd_idx)
