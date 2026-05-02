@@ -461,10 +461,11 @@ def detect_columns(prompt: str):
     return cols
 
 
-
+"preco", "valor", "entrada", "saida", "saída",
+        "saldo", "custo", "total", "gasto", "comissao", "comissão"
 def is_money_column(name: str) -> bool:
     n = normalize_text(name)
-    keys = ["preco", "valor", "entrada", "saida", "saída", "saldo", "custo", "total", "gasto"]
+    keys = ["preco", "valor", "entrada", "saida", "saída", "saldo", "custo", "total", "gasto", "comissao", "comissão]
     return any(k in n for k in keys)
 
 
@@ -713,7 +714,7 @@ def fill_example_data(ws, columns, prompt):
                 if qtd_idx and preco_idx:
                     qtd_letter = get_column_letter(qtd_idx)
                     preco_letter = get_column_letter(preco_idx)
-                    cell.value = f"={qtd_letter}{row}*{preco_letter}{row}"
+                   cell.value = f'=IFERROR({qtd_letter}{row}*{preco_letter}{row}, "")'
                 else:
                     cell.value = None
 
