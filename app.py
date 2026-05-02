@@ -461,8 +461,7 @@ def detect_columns(prompt: str):
     return cols
 
 
-"preco", "valor", "entrada", "saida", "saída",
-        "saldo", "custo", "total", "gasto", "comissao", "comissão"
+
 
 
 def is_money_column(name: str) -> bool:
