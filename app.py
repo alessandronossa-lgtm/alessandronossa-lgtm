@@ -474,13 +474,6 @@ def is_money_column(name: str) -> bool:
     return any(k in n for k in keys)
 
 
-
-
-
-
-    
-
-
 def is_integer_column(name: str) -> bool:
     n = normalize_text(name)
     keys = ["quantidade", "qtd", "estoque", "minimo", "mínimo", "km", "quilometragem"]
