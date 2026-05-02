@@ -713,12 +713,11 @@ def fill_example_data(ws, columns, prompt):
             if nome == "valor total":
                 qtd_idx = col_index(columns, "Quantidade")
                 preco_idx = col_index(columns, "Preço Unitário") or col_index(columns, "Valor Unitário")
-                
 
                 if qtd_idx and preco_idx:
                     qtd_letter = get_column_letter(qtd_idx)
                     preco_letter = get_column_letter(preco_idx)
-                   cell.value = f'=IFERROR({qtd_letter}{row}*{preco_letter}{row}, "")'
+                    cell.value = f'=IFERROR({qtd_letter}{row}*{preco_letter}{row}, "")'
                 else:
                     cell.value = None
 
@@ -731,10 +730,10 @@ def fill_example_data(ws, columns, prompt):
                     saida_letter = get_column_letter(saida_idx)
 
                     if row == 6:
-                        cell.value = f"={entrada_letter}{row}-{saida_letter}{row}"
+                        cell.value = f'=IFERROR({entrada_letter}{row}-{saida_letter}{row}, "")'
                     else:
                         saldo_letter = get_column_letter(idx)
-                        cell.value = f"={saldo_letter}{row-1}+{entrada_letter}{row}-{saida_letter}{row}"
+                        cell.value = f'=IFERROR({saldo_letter}{row-1}+{entrada_letter}{row}-{saida_letter}{row}, "")'
                 else:
                     cell.value = None
 
@@ -744,7 +743,7 @@ def fill_example_data(ws, columns, prompt):
 
                 if perc and total_idx:
                     total_letter = get_column_letter(total_idx)
-                    cell.value = f"={total_letter}{row}*{perc}"
+                    cell.value = f'=IFERROR({total_letter}{row}*{perc}, "")'
                 else:
                     cell.value = None
 
@@ -752,6 +751,8 @@ def fill_example_data(ws, columns, prompt):
                 cell.value = valor
 
     aplicar_largura_automatica(ws, columns, prompt)
+
+
 
 def extrair_colunas(texto):
     texto = normalize_text(texto or "")
