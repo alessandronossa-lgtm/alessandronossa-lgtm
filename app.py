@@ -463,10 +463,22 @@ def detect_columns(prompt: str):
 
 "preco", "valor", "entrada", "saida", "saída",
         "saldo", "custo", "total", "gasto", "comissao", "comissão"
+
+
 def is_money_column(name: str) -> bool:
     n = normalize_text(name)
-    keys = ["preco", "valor", "entrada", "saida", "saída", "saldo", "custo", "total", "gasto", "comissao", "comissão]
+    keys = [
+        "preco", "preço", "valor", "entrada", "saida", "saída",
+        "saldo", "custo", "total", "gasto", "comissao", "comissão"
+    ]
     return any(k in n for k in keys)
+
+
+
+
+
+
+    
 
 
 def is_integer_column(name: str) -> bool:
