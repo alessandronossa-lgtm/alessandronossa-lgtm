@@ -978,19 +978,16 @@ def atualizar_projeto(projeto_id):
     u = current_user()
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
-    premium = u.premium_ativo()
+    novo_prompt = (request.form.get("prompt") or "").strip()
 
-    acesso = AcessoProjeto.query.filter_by(
-        user_id=u.id, projeto_id=p.id
-    ).order_by(AcessoProjeto.expires_at.desc()).first()
+    if novo_prompt:
+        p.prompt = novo_prompt
+        db.session.commit()
 
-    acesso_ativo = False
-    if acesso and acesso.expires_at > now_utc():
-        acesso_ativo = True
+    return redirect(url_for("projeto_view", projeto_id=p.id))
 
-    if not premium and not acesso_ativo:
-            return redirect(url_for("projeto_view", projeto_id=p.id))
 
+    
     novo_prompt = (request.form.get("prompt") or "").strip()
 
     if novo_prompt:
