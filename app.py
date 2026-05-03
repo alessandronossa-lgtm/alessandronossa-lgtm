@@ -926,7 +926,7 @@ def app_home():
 
     if request.method == "POST":
         nome = (request.form.get("nome") or "").strip()
-        prompt = (request.form.get("prompt") or "").strip()
+       prompt = ""
 
         if not nome:
             projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
@@ -994,8 +994,7 @@ def atualizar_projeto(projeto_id):
         p.prompt = novo_prompt
         db.session.commit()
 
-    return redirect(url_for("projeto_view", projeto_id=p.id))
-
+  
 
 # =====================================================
 # PREMIUM
