@@ -1,149 +1,98 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8">
   <title>{{ projeto.nome }} - PromptSheet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
       background: #f4f7fb;
-      color: #1f2937;
+      color: #111827;
     }
 
     .topbar {
       background: #217346;
       color: white;
-      padding: 16px 24px;
+      padding: 18px 28px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .topbar-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
     }
 
     .topbar a {
       color: white;
       text-decoration: none;
       font-weight: bold;
-      border: 1px solid rgba(255,255,255,0.35);
-      padding: 10px 14px;
-      border-radius: 8px;
-      display: inline-block;
     }
 
     .container {
-      max-width: 980px;
-      margin: 30px auto;
-      padding: 0 20px 40px;
+      max-width: 920px;
+      margin: 34px auto;
+      padding: 0 18px;
     }
 
     .card {
       background: white;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
-      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
       margin-bottom: 22px;
     }
 
-    h1, h2, h3 {
-      margin-top: 0;
-      color: #111827;
+    h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
     }
 
-    .subtitle {
-      font-size: 15px;
-      line-height: 1.6;
+    h2 {
+      margin: 0 0 14px;
+      font-size: 24px;
+    }
+
+    p {
       color: #4b5563;
-      margin-bottom: 18px;
-    }
-
-    .prompt-box {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 16px;
-      white-space: pre-wrap;
-      color: #374151;
-      line-height: 1.6;
-      margin-bottom: 18px;
-    }
-
-    .edit-textarea {
-      width: 100%;
-      min-height: 140px;
-      padding: 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
-      font-size: 15px;
-      font-family: Arial, Helvetica, sans-serif;
-      resize: vertical;
-      outline: none;
-    }
-
-    .edit-textarea:focus {
-      border-color: #217346;
-      box-shadow: 0 0 0 3px rgba(33, 115, 70, 0.12);
-    }
-
-    .badge-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 16px;
+      line-height: 1.5;
     }
 
     .badge {
       display: inline-block;
-      padding: 8px 12px;
+      background: #ecfdf5;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+      padding: 10px 14px;
       border-radius: 999px;
-      font-size: 13px;
       font-weight: bold;
+      margin-top: 10px;
     }
 
-    .badge-ok {
-      background: #e8f7ee;
-      color: #0f7a3d;
-      border: 1px solid #b7e4c7;
-    }
-
-    .badge-warn {
-      background: #fff4e5;
-      color: #92400e;
-      border: 1px solid #f3d19c;
-    }
-
-    .alert {
-      padding: 14px 16px;
-      border-radius: 10px;
-      margin-bottom: 16px;
-      font-size: 14px;
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      padding: 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      font-size: 16px;
       line-height: 1.5;
+      resize: vertical;
+      margin-top: 12px;
     }
 
-    .alert-success {
-      background: #e6f9f0;
-      border: 1px solid #a7f3d0;
-      color: #065f46;
+    .hint {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 16px;
+      margin: 16px 0;
+      color: #374151;
     }
 
-    .alert-warn {
-      background: #fff8e7;
-      border: 1px solid #f3d19c;
-      color: #92400e;
+    .hint strong {
+      color: #217346;
     }
 
     .actions {
@@ -153,262 +102,163 @@
       margin-top: 18px;
     }
 
-    .btn {
-      background: #217346;
-      color: white;
+    button, .btn {
       border: none;
-      padding: 14px 18px;
-      border-radius: 10px;
+      border-radius: 12px;
+      padding: 14px 20px;
       font-weight: bold;
       cursor: pointer;
       text-decoration: none;
       display: inline-block;
-      transition: 0.2s ease;
       font-size: 15px;
     }
 
-    .btn:hover {
-      background: #1b5f39;
+    .btn-primary {
+      background: #217346;
+      color: white;
     }
 
     .btn-secondary {
-      background: white;
-      color: #217346;
-      border: 1px solid #217346;
-      padding: 14px 18px;
-      border-radius: 10px;
+      background: #f1f5f9;
+      color: #111827;
+      border: 1px solid #cbd5e1;
+    }
+
+    .pay-card {
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+    }
+
+    .success-card {
+      background: #ecfdf5;
+      border: 1px solid #86efac;
+    }
+
+    .price {
+      font-size: 34px;
       font-weight: bold;
-      text-decoration: none;
-      display: inline-block;
-      transition: 0.2s ease;
-      font-size: 15px;
+      margin: 8px 0;
     }
 
-    .btn-secondary:hover {
-      background: #f5fbf7;
-    }
-
-    .offer-box {
-      border-radius: 14px;
-      padding: 20px;
-      border: 1px solid #f3d19c;
-      background: #fff8e7;
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
       margin-top: 18px;
-      max-width: 420px;
     }
 
-    .offer-title {
-      font-size: 20px;
-      font-weight: bold;
-      margin: 0 0 8px 0;
-      color: #111827;
-    }
-
-    .offer-price {
-      font-size: 32px;
-      font-weight: bold;
-      margin: 0 0 10px 0;
-      color: #111827;
-    }
-
-    .offer-text {
-      margin: 0 0 16px 0;
-      color: #4b5563;
-      line-height: 1.5;
-      font-size: 14px;
-    }
-
-    .alert-pix {
-      margin-top: 16px;
-      background: #fff8e7;
-      border: 1px solid #f3d19c;
-      color: #8a5a00;
-      padding: 14px 16px;
-      border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .tips {
-      background: #f9fafb;
+    .step {
+      background: #f8fafc;
       border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 16px;
-      margin-top: 18px;
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: bold;
     }
 
-    .tips ul {
-      margin: 10px 0 0 18px;
-      color: #4b5563;
-      line-height: 1.6;
-    }
-
-    .small {
-      font-size: 13px;
-      color: #6b7280;
-    }
-
-    .section-divider {
-      height: 1px;
-      background: #e5e7eb;
-      margin: 24px 0;
-    }
-
-    @media (max-width: 820px) {
-      .container {
-        padding: 0 14px 30px;
-      }
-
-      .offer-box {
-        max-width: 100%;
-      }
+    @media (max-width: 720px) {
+      .steps { grid-template-columns: 1fr; }
+      h1 { font-size: 26px; }
     }
   </style>
 </head>
+
 <body>
 
   <div class="topbar">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <img src="{{ url_for('static', filename='logo.png') }}"
-           alt="PromptSheet"
-           style="height:40px; width:auto; background:white; border-radius:8px; padding:4px;">
-
-      <div>
-        <div style="font-size:18px; font-weight:700;">PromptSheet</div>
-        <div style="font-size:12px; opacity:0.9;">Sua planilha, a um texto de distância</div>
-      </div>
-    </div>
-
-    <div class="topbar-actions">
-      <a href="{{ url_for('app_home') }}">← Voltar</a>
-      <a href="{{ url_for('logout') }}">Sair</a>
-    </div>
+    <div><strong>PromptSheet</strong></div>
+    <a href="/app">← Voltar</a>
   </div>
 
   <div class="container">
 
     <div class="card">
       <h1>{{ projeto.nome }}</h1>
-      <p class="subtitle">
-        Revise abaixo a descrição do seu projeto. Você pode ajustar o texto e gerar novas versões da planilha
-        enquanto seu acesso estiver ativo.
+      <p>
+        Sua planilha já foi criada com base no texto abaixo.
+        Você pode ajustar a descrição antes de gerar o arquivo final.
       </p>
 
-      <h3>Descrição atual do projeto</h3>
-      <div class="prompt-box">
-        {{ projeto.prompt if projeto.prompt else "Projeto criado sem descrição." }}
+      <div class="steps">
+        <div class="step">1️⃣ Descreva</div>
+        <div class="step">2️⃣ Libere por R$1</div>
+        <div class="step">3️⃣ Baixe o Excel</div>
       </div>
+    </div>
 
-      <div class="badge-row">
-        {% if acesso_ativo %}
-          <span class="badge badge-ok">Acesso avulso ativo</span>
-        {% else %}
-          <span class="badge badge-warn">Aguardando liberação de acesso</span>
-        {% endif %}
-      </div>
+    <div class="card">
+      <h2>Descreva sua planilha</h2>
 
-      <div class="section-divider"></div>
-
-      <h3>Ajustar planilha</h3>
-      <p class="subtitle">
-        Edite o texto abaixo para refinar sua planilha. Exemplo:
-        <strong>“o cabeçalho deve ficar vermelho”</strong>,
-        <strong>“adicionar coluna comissão”</strong> ou
-        <strong>“remover a coluna fornecedor”</strong>.
+      <p>
+        Escreva como se estivesse explicando para uma pessoa.
+        <strong>Não precisa saber Excel.</strong>
       </p>
 
-      <form method="POST" action="{{ url_for('atualizar_projeto', projeto_id=projeto.id) }}">
-        <textarea class="edit-textarea" name="prompt" rows="6">{{ projeto.prompt }}</textarea>
+      <div class="hint">
+        <strong>Exemplo:</strong><br>
+        Quero um controle de vendas com produto, quantidade, valor unitário, valor total e comissão de 10%.
+      </div>
+
+      <form method="POST" action="/projeto/{{ projeto.id }}/atualizar">
+        <textarea name="prompt">{{ projeto.prompt }}</textarea>
 
         <div class="actions">
-          <button type="submit" class="btn">Salvar ajustes</button>
+          <button class="btn-primary" type="submit">
+            Salvar descrição
+          </button>
+
+          <a class="btn btn-secondary" href="/app">
+            Voltar para projetos
+          </a>
         </div>
       </form>
     </div>
 
-    <div class="card">
-      <h2>Gerar planilha</h2>
+    {% if premium or acesso_ativo %}
 
-      {% if acesso_ativo %}
-        <div class="alert alert-success">
-          Seu acesso está liberado. Agora você já pode gerar e baixar esta planilha.
-          {% if expira_em %}
-            <br><span class="small">Acesso avulso válido até: {{ expira_em }}</span>
-          {% endif %}
-        </div>
+      <div class="card success-card">
+        <h2>Pronto para gerar 😄</h2>
+        <p>
+          Seu acesso está liberado. Agora você já pode gerar e baixar sua planilha em Excel.
+        </p>
 
         <div class="actions">
-          <a class="btn" href="{{ url_for('download_projeto', projeto_id=projeto.id) }}">
+          <a class="btn btn-primary" href="/projeto/{{ projeto.id }}/download">
             Gerar e baixar planilha
           </a>
 
-          <a class="btn-secondary" href="{{ url_for('app_home') }}">
+          <a class="btn btn-secondary" href="/app">
             Voltar para projetos
           </a>
         </div>
+      </div>
 
-      {% else %}
-        <div class="alert alert-warn">
-          Seu projeto já está pronto para a próxima etapa. Para gerar e baixar a planilha, libere o acesso por 24 horas.
-        </div>
+    {% else %}
 
-        <div class="offer-box">
-          <p class="offer-title">Acesso avulso 24h</p>
-          <p class="offer-price">R$ {{ '%.2f'|format(price_avulso)|replace('.', ',') }}</p>
-          <p class="offer-text">
-            Ideal para quem quer baixar esta planilha agora, com acesso liberado por 24 horas para ajustar e gerar novas versões.
-          </p>
-          <button class="btn" type="button" onclick="comprarDiaria()">
-            Comprar acesso 24h
+      <div class="card pay-card">
+        <h2>Sua planilha está quase pronta</h2>
+
+        <p>
+          Para gerar e baixar o arquivo em Excel, libere o acesso por 24 horas.
+        </p>
+
+        <div class="price">R$ 1,00</div>
+
+        <p>
+          Durante 24 horas você pode ajustar, gerar e baixar esta planilha.
+        </p>
+
+        <form method="POST" action="/projeto/{{ projeto.id }}/comprar_diaria">
+          <button class="btn-primary" type="submit">
+            Liberar acesso e baixar
           </button>
-        </div>
+        </form>
+      </div>
 
-        <div class="alert-pix">
-          <strong>💡 Importante sobre o pagamento:</strong><br>
-          • Cartão: o retorno costuma ser automático após a confirmação.<br>
-          • PIX: depois de pagar no banco, clique em <b>“Voltar para PromptSheet”</b> para continuar.
-        </div>
-
-        <div class="tips">
-          <strong>Como funciona?</strong>
-          <ul>
-            <li>Você libera o acesso por 24 horas.</li>
-            <li>Pode ajustar o texto da planilha nesse período.</li>
-            <li>Gera novas versões sem precisar recriar o projeto do zero.</li>
-          </ul>
-        </div>
-
-        <div class="actions">
-          <a class="btn-secondary" href="{{ url_for('app_home') }}">
-            Voltar para projetos
-          </a>
-        </div>
-      {% endif %}
-    </div>
+    {% endif %}
 
   </div>
-
-  <script>
-    async function comprarDiaria() {
-      try {
-        const resp = await fetch("{{ url_for('comprar_diaria', projeto_id=projeto.id) }}", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
-        });
-
-        const data = await resp.json();
-
-        if (data.init_point) {
-          window.location.href = data.init_point;
-          return;
-        }
-
-        alert(data.erro || "Não foi possível iniciar o pagamento da diária.");
-      } catch (e) {
-        alert("Erro ao tentar iniciar a compra da diária.");
-      }
-    }
-  </script>
 
 </body>
 </html>
