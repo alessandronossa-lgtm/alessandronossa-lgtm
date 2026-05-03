@@ -989,7 +989,7 @@ def atualizar_projeto(projeto_id):
         acesso_ativo = True
 
     if not premium and not acesso_ativo:
-        return "Acesso expirado", 403
+            return redirect(url_for("projeto_view", projeto_id=p.id))
 
     novo_prompt = (request.form.get("prompt") or "").strip()
 
