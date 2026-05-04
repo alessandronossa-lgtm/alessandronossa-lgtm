@@ -1,467 +1,209 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PromptSheet - Seus Projetos</title>
+  <meta charset="UTF-8">
+  <title>PromptSheet - Meus projetos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
       background: #f4f7fb;
-      color: #1f2937;
+      color: #111827;
     }
 
     .topbar {
       background: #217346;
       color: white;
-      padding: 16px 24px;
+      padding: 16px 28px;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .brand {
-      font-size: 24px;
-      font-weight: 700;
-      margin: 0;
-    }
-
-    .brand-sub {
-      margin: 4px 0 0 0;
-      font-size: 14px;
-      opacity: 0.92;
+      align-items: center;
     }
 
     .topbar a {
       color: white;
       text-decoration: none;
       font-weight: bold;
-      border: 1px solid rgba(255,255,255,0.35);
-      padding: 10px 14px;
-      border-radius: 8px;
-      display: inline-block;
     }
 
     .container {
-      max-width: 1250px;
-      margin: 32px auto;
-      padding: 0 20px;
-    }
-
-    .grid {
+      max-width: 1180px;
+      margin: 34px auto;
+      padding: 0 18px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 24px;
+      gap: 26px;
     }
 
     .card {
       background: white;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
-      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
     }
 
-    h1, h2, h3 {
+    h1, h2 {
       margin-top: 0;
     }
 
-    .section-title {
-      font-size: 24px;
-      margin-bottom: 8px;
-      color: #111827;
-    }
-
-    .section-text {
-      font-size: 15px;
-      line-height: 1.6;
+    p {
       color: #4b5563;
-      margin-bottom: 22px;
+      line-height: 1.5;
     }
 
     label {
+      font-weight: bold;
       display: block;
-      font-weight: 700;
-      margin-bottom: 8px;
-      color: #111827;
+      margin: 18px 0 8px;
     }
 
-    input[type="text"],
-    textarea {
+    input {
       width: 100%;
-      padding: 14px 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
-      font-size: 15px;
-      outline: none;
-      transition: 0.2s ease;
-      background: #fff;
-    }
-
-    input[type="text"]:focus,
-    textarea:focus {
-      border-color: #217346;
-      box-shadow: 0 0 0 3px rgba(33, 115, 70, 0.12);
-    }
-
-    textarea {
-      min-height: 160px;
-      resize: vertical;
-    }
-
-    .field {
-      margin-bottom: 18px;
-    }
-
-    .hint {
-      font-size: 13px;
-      color: #6b7280;
-      margin-top: 6px;
-    }
-
-    .btn {
-      background: #217346;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 14px 18px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: 0.2s ease;
-    }
-
-    .btn:hover {
-      background: #1b5f39;
-    }
-
-    .btn-secondary {
-      background: white;
-      color: #217346;
-      border: 1px solid #217346;
-      text-decoration: none;
-      display: inline-block;
-      padding: 12px 16px;
-      border-radius: 10px;
-      font-weight: 700;
-    }
-
-    .alert {
-      background: #fff4e5;
-      color: #92400e;
-      border: 1px solid #f3d19c;
-      padding: 14px 16px;
-      border-radius: 10px;
-      margin-bottom: 18px;
-      font-size: 14px;
-    }
-
-    .projects-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
-
-    .project-list {
-      display: grid;
-      gap: 14px;
-    }
-
-    .project-item {
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 16px;
-      background: #fafafa;
-      transition: 0.2s ease;
-    }
-
-    .project-item:hover {
-      border-color: #cbd5e1;
-      background: #ffffff;
-    }
-
-    .project-name {
-      margin: 0 0 8px 0;
-      font-size: 17px;
-      color: #111827;
-    }
-
-    .project-prompt {
-      margin: 0 0 12px 0;
-      font-size: 14px;
-      line-height: 1.5;
-      color: #4b5563;
-      white-space: pre-wrap;
-    }
-
-    .project-link {
-      display: inline-block;
-      text-decoration: none;
-      color: #217346;
-      font-weight: 700;
-    }
-
-    .empty {
-      border: 1px dashed #cbd5e1;
-      border-radius: 14px;
-      padding: 24px;
-      text-align: center;
-      color: #6b7280;
-      background: #fcfcfc;
-    }
-
-    .examples {
-      margin-top: 20px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
+      padding: 15px;
+      border: 1px solid #cbd5e1;
       border-radius: 12px;
-      padding: 16px;
-    }
-
-    .examples h3 {
-      margin-bottom: 10px;
       font-size: 16px;
     }
 
-    .examples ul {
-      padding-left: 18px;
-      margin: 0;
-      color: #4b5563;
-    }
-
-    .examples li {
-      margin-bottom: 10px;
-      line-height: 1.5;
-    }
-
-    .model-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .model-btn {
+    button {
+      margin-top: 18px;
       width: 100%;
-      padding: 12px 14px;
-      border-radius: 10px;
-      border: 1px solid #dbe1ea;
-      background: #f8fafc;
-      color: #1f2937;
-      font-size: 14px;
-      font-weight: 700;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      background: #217346;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
       cursor: pointer;
-      transition: 0.2s ease;
     }
 
-    .model-btn:hover {
-      background: #eef5f0;
-      border-color: #b7d6bf;
+    .hint {
+      background: #ecfdf5;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      padding: 14px;
+      border-radius: 14px;
+      margin-top: 18px;
+      font-size: 14px;
     }
 
-    @media (max-width: 900px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
+    .project {
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 14px;
+      background: #fff;
+    }
 
+    .project h3 {
+      margin: 0 0 8px;
+    }
+
+    .project p {
+      margin: 0 0 14px;
+      font-size: 14px;
+    }
+
+    .project a {
+      color: #217346;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .empty {
+      color: #6b7280;
+      background: #f8fafc;
+      padding: 18px;
+      border-radius: 14px;
+      border: 1px dashed #cbd5e1;
+    }
+
+    @media (max-width: 850px) {
       .container {
-        margin: 20px auto;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .model-grid {
         grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
+
 <body>
+
   <div class="topbar">
-    <div>
-
-
-
-<div style="display:flex; align-items:center; gap:12px;">
-    <img src="{{ url_for('static', filename='logo.png') }}" 
-         alt="PromptSheet" 
-         style="height:42px; width:auto; background:white; border-radius:8px; padding:4px;">
-    
-    <div>
-        <div style="font-weight:700; font-size:18px;">PromptSheet</div>
-        <div style="font-size:12px; color:#d1d5db;">Sua planilha, a um texto de distância</div>
-    </div>
-</div>
-
-
-
-      
-      
-    </div>
-    <div>
-      <a href="{{ url_for('logout') }}">Sair</a>
-    </div>
+    <div><strong>PromptSheet</strong></div>
+    <a href="/logout">Sair</a>
   </div>
 
   <div class="container">
-    <div class="grid">
-      <div class="card">
-        <h1 class="section-title">Criar novo projeto</h1>
-        <p class="section-text">
-          Dê um nome ao projeto e descreva a planilha que você deseja gerar.
-          Quanto melhor o seu texto, melhor ficará a estrutura da planilha.
-        </p>
 
-        {% if erro %}
-          <div class="alert">{{ erro }}</div>
-        {% endif %}
+    <div class="card">
+      <h1>Criar nova planilha</h1>
 
-        <form method="POST" action="{{ url_for('app_home') }}">
-          <div class="field">
-            <label for="nome">Nome do projeto</label>
-            <input
-              type="text"
-              id="nome"
-              name="nome"
-              placeholder="Ex: Controle de vendas abril"
-              required
-            />
-            <div class="hint">Use um nome simples para identificar sua planilha depois.</div>
-          </div>
+      <p>
+        Primeiro, dê um nome para sua planilha.
+        Na próxima etapa você vai descrever o que precisa.
+      </p>
 
-          <div class="field">
-            <label>Modelos prontos</label>
-            <div class="model-grid">
-              <button type="button" class="model-btn" onclick="setPrompt('vendas')">📊 Controle de Vendas</button>
-              <button type="button" class="model-btn" onclick="setPrompt('financeiro')">💰 Controle Financeiro</button>
-              <button type="button" class="model-btn" onclick="setPrompt('estoque')">📦 Controle de Estoque</button>
-              <button type="button" class="model-btn" onclick="setPrompt('veiculos')">🚗 Controle de Veículos</button>
-              <button type="button" class="model-btn" onclick="setPrompt('obra')">🏗️ Controle de Obra</button>
-              <button type="button" class="model-btn" onclick="setPrompt('clientes')">👥 Cadastro de Clientes</button>
-            </div>
-            <div class="hint">Clique em um modelo para preencher automaticamente o campo abaixo.</div>
-          </div>
-
-          <div class="field">
-            <label for="prompt">Descreva sua planilha</label>
-            <textarea
-              id="prompt"
-              name="prompt"
-              placeholder="Ex: Quero uma planilha de vendas com colunas Data, Cliente, Produto, Quantidade, Preço Unitário e Valor Total."
-            ></textarea>
-            <div class="hint">
-              Você pode informar o tipo da planilha e também as colunas exatas.
-            </div>
-          </div>
-
-          <button class="btn" type="submit">Criar projeto</button>
-        </form>
-
-        <div class="examples">
-  <h3>💡 Como pedir sua planilha</h3>
-  <ul>
-    <li><b>Colunas:</b> colunas: Data, Cliente, Produto, Valor</li>
-    <li><b>Largura:</b> larguras: Produto 30, Observação 50</li>
-    <li><b>Cor:</b> cabeçalho verde / azul / vermelho</li>
-    <li><b>Extras:</b> pode pedir totais, cálculos e organização</li>
-  </ul>
-</div>
-      </div>
-
-      <div class="card">
-        <div class="projects-header">
-          <div>
-            <h2 class="section-title" style="margin-bottom: 4px;">Seus projetos</h2>
-            <p class="section-text" style="margin-bottom: 0;">
-              Acesse seus projetos criados e continue de onde parou.
-            </p>
-          </div>
+      {% if erro %}
+        <div class="hint" style="background:#fee2e2;border-color:#fecaca;color:#991b1b;">
+          {{ erro }}
         </div>
+      {% endif %}
 
-        {% if projetos %}
-          <div class="project-list">
-            {% for projeto in projetos %}
-              <div class="project-item">
-                <h3 class="project-name">{{ projeto.nome }}</h3>
-                <p class="project-prompt">
-                  {{ projeto.prompt if projeto.prompt else "Projeto criado sem descrição." }}
-                </p>
-                <a class="project-link" href="{{ url_for('projeto_view', projeto_id=projeto.id) }}">
-                  Abrir projeto →
-                </a>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="empty">
-            <p style="margin: 0 0 8px 0; font-weight: bold;">Nenhum projeto ainda.</p>
-            <p style="margin: 0;">Crie seu primeiro projeto no formulário ao lado.</p>
-          </div>
-        {% endif %}
+      <form method="POST" action="/app">
+        <label>Nome da planilha</label>
+        <input
+          type="text"
+          name="nome"
+          placeholder="Ex: Controle de vendas"
+          required
+        >
+
+        <button type="submit">
+          Continuar
+        </button>
+      </form>
+
+      <div class="hint">
+        Depois você poderá escrever algo como:
+        <br><br>
+        “Quero um controle de vendas com produto, quantidade, valor total e comissão de 10%.”
       </div>
     </div>
+
+    <div class="card">
+      <h2>Suas planilhas</h2>
+
+      <p>
+        Continue uma planilha criada anteriormente.
+      </p>
+
+      {% if projetos %}
+        {% for projeto in projetos %}
+          <div class="project">
+            <h3>{{ projeto.nome }}</h3>
+
+            {% if projeto.prompt %}
+              <p>{{ projeto.prompt }}</p>
+            {% else %}
+              <p>Planilha criada. Clique para descrever o que você precisa.</p>
+            {% endif %}
+
+            <a href="/projeto/{{ projeto.id }}">Abrir planilha →</a>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">
+          Você ainda não criou nenhuma planilha.
+        </div>
+      {% endif %}
+    </div>
+
   </div>
 
-  <script>
-    function setPrompt(tipo) {
-      let texto = "";
-
-      if (tipo === "vendas") {
-        texto = "Planilha de controle de vendas com colunas: Data, Cliente, Produto, Quantidade, Preço Unitário e Valor Total. O cabeçalho deve ficar verde.";
-      }
-
-      if (tipo === "financeiro") {
-        texto = "Planilha de controle financeiro pessoal com colunas: Data, Descrição, Categoria, Forma de Pagamento, Valor e Saldo. O cabeçalho deve ficar verde escuro.";
-      }
-
-      if (tipo === "estoque") {
-        texto = "Planilha de controle de estoque com colunas: Produto, Categoria, Quantidade, Estoque Mínimo e Fornecedor. O cabeçalho deve ficar azul.";
-      }
-
-      if (tipo === "veiculos") {
-        texto = "Planilha de controle de veículos com colunas: Placa, Modelo, Km, Data da Revisão e Observação. O cabeçalho deve ficar vermelho.";
-      }
-
-      if (tipo === "obra") {
-        texto = "Planilha de controle de gastos de obra com colunas: Data, Local, Atividade, Material, Quantidade, Valor e Responsável. O cabeçalho deve ficar cinza.";
-      }
-
-      if (tipo === "clientes") {
-        texto = "Planilha de cadastro de clientes com colunas: Nome, Telefone, E-mail, Cidade e Observação. O cabeçalho deve ficar azul.";
-      }
-
-      const campoPrompt = document.getElementById("prompt");
-      if (campoPrompt) {
-        campoPrompt.value = texto;
-        campoPrompt.focus();
-      }
-    }
-  </script>
-
-
-
-
-  <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const promptSalvo = localStorage.getItem("promptsheet_modelo_prompt");
-    const campoPrompt = document.getElementById("prompt");
-
-    if (promptSalvo && campoPrompt && !campoPrompt.value.trim()) {
-        campoPrompt.value = promptSalvo;
-        localStorage.removeItem("promptsheet_modelo_prompt");
-    }
-});
-</script>
-  
 </body>
 </html>
