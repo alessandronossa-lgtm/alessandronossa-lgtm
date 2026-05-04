@@ -926,7 +926,7 @@ def app_home():
 
     if request.method == "POST":
         nome = (request.form.get("nome") or "").strip()
-       prompt = ""
+        prompt = ""
 
         if not nome:
             projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
@@ -939,7 +939,6 @@ def app_home():
 
     projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
     return render_template("app.html", usuario=u, projetos=projetos)
-
 
 @app.route("/projeto/<int:projeto_id>")
 @login_required
