@@ -1129,7 +1129,7 @@ def comprar_diaria(projeto_id):
     final_link = init_point or sandbox_init_point
     print(f"LOG comprar_diaria: final_link={final_link}", flush=True)
 
-    return jsonify({"init_point": final_link})
+   return redirect(final_link)
 
 
 @app.route("/pendente/<int:projeto_id>")
