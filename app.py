@@ -1126,10 +1126,11 @@ def comprar_diaria(projeto_id):
             "detalhes": response
         }), 500
 
-           final_link = init_point or sandbox_init_point
+    final_link = init_point or sandbox_init_point
     print(f"LOG comprar_diaria: final_link={final_link}", flush=True)
 
     return redirect(final_link)
+
 
 @app.route("/pendente/<int:projeto_id>")
 @login_required
