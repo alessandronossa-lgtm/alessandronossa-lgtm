@@ -246,46 +246,46 @@
 
 
 
-<div class="card preview-card">
+
+    <div class="card preview-card">
   <h3>Prévia da sua planilha 👇</h3>
 
   <div class="preview-table">
     <table>
       <thead>
         <tr>
-          {% for col in projeto.prompt.split(",") %}
-            <th>{{ col.strip() }}</th>
-          {% endfor %}
+          <th>Produto</th>
+          <th>Quantidade</th>
+          <th>Valor Unitário</th>
+          <th>Valor Total</th>
+          <th>Comissão</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          {% for col in projeto.prompt.split(",") %}
-            <td>Exemplo</td>
-          {% endfor %}
+          <td>Produto A</td>
+          <td>2</td>
+          <td>R$ 35,00</td>
+          <td>R$ 70,00</td>
+          <td>R$ 7,00</td>
         </tr>
         <tr>
-          {% for col in projeto.prompt.split(",") %}
-            <td>Exemplo</td>
-          {% endfor %}
+          <td>Produto B</td>
+          <td>3</td>
+          <td>R$ 20,00</td>
+          <td>R$ 60,00</td>
+          <td>R$ 6,00</td>
         </tr>
       </tbody>
     </table>
   </div>
+
+  <p style="font-size:13px;color:#6b7280;margin-top:10px;">
+    Esta é uma prévia ilustrativa. A planilha final será gerada com base no seu texto.
+  </p>
 </div>
 
-
-
-
-
-
-
-
-
-
-
-
-    
+   
 
     {% if premium or acesso_ativo %}
 
