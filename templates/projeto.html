@@ -236,26 +236,32 @@
 
     {% else %}
 
-      <div class="card pay-card">
-        <h2>Sua planilha está quase pronta</h2>
 
-        <p>
-          Para gerar e baixar o arquivo em Excel, libere o acesso por 24 horas.
-        </p>
+<div class="card pay-card">
+  <h2>Sua planilha está quase pronta</h2>
 
-        <div class="price">R$ 1,00</div>
+  <p>
+    Para gerar e baixar o arquivo em Excel, libere o acesso por 24 horas.
+  </p>
 
-        <p>
-          Durante 24 horas você pode ajustar, gerar e baixar esta planilha.
-        </p>
+  <p style="font-weight:bold;">
+    Acesso por 24h para testar sem compromisso
+  </p>
 
-        <form method="POST" action="/projeto/{{ projeto.id }}/comprar_diaria">
-          <button class="btn-primary" type="submit">
-            Liberar acesso e baixar
-          </button>
-        </form>
-      </div>
+  <div class="price">R$ 1,00</div>
 
+  <p style="margin-top:10px; color:#555;">
+    Pagamento rápido via Pix ou cartão ✔️
+  </p>
+
+  <form method="POST" action="/projeto/{{ projeto.id }}/comprar_diaria" target="_blank">
+    <button class="btn-primary" type="submit">
+      Gerar minha planilha agora (R$1)
+    </button>
+  </form>
+</div>
+
+    
     {% endif %}
 
   </div>
