@@ -6,6 +6,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
+
+.preview-card {
+  margin-top: 20px;
+}
+
+.preview-table {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.preview-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.preview-table th {
+  background: #1f4e78;
+  color: white;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.preview-table td {
+  padding: 8px;
+  border: 1px solid #ddd;
+  font-size: 13px;
+}
+
+    
     * { box-sizing: border-box; }
 
     body {
@@ -214,6 +243,49 @@
         </div>
       </form>
     </div>
+
+
+
+<div class="card preview-card">
+  <h3>Prévia da sua planilha 👇</h3>
+
+  <div class="preview-table">
+    <table>
+      <thead>
+        <tr>
+          {% for col in projeto.prompt.split(",") %}
+            <th>{{ col.strip() }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          {% for col in projeto.prompt.split(",") %}
+            <td>Exemplo</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          {% for col in projeto.prompt.split(",") %}
+            <td>Exemplo</td>
+          {% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
     {% if premium or acesso_ativo %}
 
