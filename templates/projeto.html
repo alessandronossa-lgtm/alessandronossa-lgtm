@@ -232,9 +232,39 @@
       <form method="POST" action="/projeto/{{ projeto.id }}/atualizar">
         <textarea name="prompt">{{ projeto.prompt }}</textarea>
 
+
+
+
+
+
+<div class="hint">
+  <strong>Outros exemplos que funcionam bem:</strong><br><br>
+
+  📊 Controle de estoque com produto, entrada, saída e saldo<br>
+  🚚 Controle de entregas com cliente, endereço e status<br>
+  💰 Controle financeiro com data, descrição, entrada, saída e saldo<br>
+  👥 Cadastro de clientes com nome, telefone e e-mail
+</div>
+
+
+<div class="examples">
+  <button type="button" onclick="setPrompt('Controle de vendas com produto, quantidade e valor')">📊 Vendas</button>
+  <button type="button" onclick="setPrompt('Controle financeiro com entrada e saída')">💰 Financeiro</button>
+  <button type="button" onclick="setPrompt('Cadastro de clientes com nome e telefone')">👥 Clientes</button>
+</div>
+
+<script>
+function setPrompt(text) {
+  document.querySelector("textarea").value = text;
+}
+</script>
+
+
+        
+
         <div class="actions">
           <button class="btn-primary" type="submit">
-            Salvar descrição
+            Atualizar prévia
           </button>
 
           <a class="btn btn-secondary" href="/app">
@@ -254,11 +284,11 @@
     <table>
       <thead>
         <tr>
-          <th>Produto</th>
-          <th>Quantidade</th>
-          <th>Valor Unitário</th>
-          <th>Valor Total</th>
-          <th>Comissão</th>
+<th style="width:40%;">Produto</th>
+<th style="width:15%;">Quantidade</th>
+<th style="width:20%;">Valor Unitário</th>
+<th style="width:15%;">Valor Total</th>
+<th style="width:10%;">Comissão</th>
         </tr>
       </thead>
       <tbody>
