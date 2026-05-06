@@ -8,6 +8,95 @@
   <style>
     * { box-sizing: border-box; }
 
+
+.btn-full {
+  width: 100%;
+  justify-content: center;
+}
+
+
+
+
+.clean-preview {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.mini-badge {
+  background: #217346;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+.mini-card {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 13px;
+}
+
+.mini-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.mini-text {
+  color: #374151;
+}
+
+.mini-arrow {
+  text-align: center;
+  font-size: 18px;
+  margin: 8px 0;
+}
+
+.mini-sheet {
+  background: white;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+
+.mini-sheet table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.mini-sheet th {
+  background: #217346;
+  color: white;
+  padding: 6px;
+}
+
+.mini-sheet td {
+  border: 1px solid #eee;
+  padding: 6px;
+}
+
+.mini-price {
+  margin-top: 10px;
+  text-align: center;
+  font-weight: bold;
+  color: #217346;
+}
+
+
+
+
+
+
+
+
+
+
+    
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
@@ -283,10 +372,10 @@
             </div>
           </div>
 
-          <div class="cta-row">
-            <a class="btn btn-primary" href="/register">Criar minha planilha agora</a>
-            <a class="btn btn-secondary" href="/login">Já tenho conta</a>
-          </div>
+         <div class="cta-row">
+  <a class="btn btn-primary btn-full" href="/register">Criar conta grátis</a>
+  <a class="btn btn-secondary btn-full" href="/login">Entrar</a>
+</div>
 
           <div class="trust">
             <span>✅ Teste por R$1</span>
@@ -295,16 +384,52 @@
           </div>
         </div>
 
-        <div class="preview">
-          <div class="tag">🤖 IA criando sua planilha</div>
 
-          <div class="note">
-            <strong>Você escreve:</strong><br>
-            “controle de vendas com comissão”
-          </div>
+       <div class="preview clean-preview">
 
-          <div class="arrow">↓</div>
+  <div class="mini-badge">
+    ✨ IA criando sua planilha
+  </div>
 
+  <div class="mini-card">
+    <div class="mini-title">Você escreve:</div>
+    <div class="mini-text">
+      controle de vendas com produto e comissão
+    </div>
+  </div>
+
+  <div class="mini-arrow">↓</div>
+
+  <div class="mini-sheet">
+    <table>
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th>Qtd</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Produto A</td>
+          <td>2</td>
+          <td>R$ 70</td>
+        </tr>
+        <tr>
+          <td>Produto B</td>
+          <td>3</td>
+          <td>R$ 60</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mini-price">
+    Só R$1 para testar
+  </div>
+
+</div>
+          
           <div class="sheet">
             <strong style="display:block;margin-bottom:10px;color:#217346;">
               PLANILHA PRONTA
