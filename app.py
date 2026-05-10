@@ -935,7 +935,9 @@ def app_home():
             projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
             return render_template("app.html", usuario=u, projetos=projetos, erro="Dê um nome ao projeto.")
 
-@app.route("/projeto/<int:projeto_id>"), nome=nome, prompt=prompt)
+@app.route("/projeto/<int:projeto_id>"), nome=nome, prompt=prompt)@app.route("/projeto/<int:projeto_id>")
+@login_required
+def projeto_view(projeto_id):
 db.session.add(p)
 
 if not u.usou_gratis:
