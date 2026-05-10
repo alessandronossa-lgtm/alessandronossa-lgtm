@@ -317,7 +317,24 @@ function setPrompt(text) {
 
    
 
-    {% if premium or acesso_ativo %}
+   {% if premium or acesso_ativo or gratis_ativo %}
+
+{% if gratis_ativo %}
+  <div style="
+    background:#ecfdf5;
+    border:1px solid #86efac;
+    padding:14px;
+    border-radius:12px;
+    margin-bottom:15px;
+    font-weight:bold;
+    color:#166534;
+  ">
+    🎁 Você está usando sua planilha grátis (1 hora disponível)
+  </div>
+{% endif %}
+
+
+    
 
       <div class="card success-card">
         <h2>Pronto para gerar 😄</h2>
@@ -327,7 +344,7 @@ function setPrompt(text) {
 
         <div class="actions">
           <a class="btn btn-primary" href="/projeto/{{ projeto.id }}/download">
-            Gerar e baixar planilha
+            Gerar e baixar minha planilha
           </a>
 
           <a class="btn btn-secondary" href="/app">
