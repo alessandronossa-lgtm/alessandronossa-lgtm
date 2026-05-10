@@ -81,7 +81,7 @@ class Config(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 
 
-@app.route("/app", methods=["GET", "POST"])
+class Usuario(db.Model):
     __tablename__ = "usuario"
 
     id = db.Column(db.Integer, primary_key=True)
