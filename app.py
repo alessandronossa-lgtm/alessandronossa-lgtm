@@ -81,7 +81,7 @@ class Config(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 
 
-class Usuario(db.Model):
+@app.route("/app", methods=["GET", "POST"])
     __tablename__ = "usuario"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -92,6 +92,9 @@ class Usuario(db.Model):
     subscription_id = db.Column(db.String(120), nullable=True)
     free_premium_until = db.Column(db.DateTime(timezone=True), nullable=True)
 
+    usou_gratis = db.Column(db.Boolean, default=False)
+    gratis_expira_em = db.Column(db.DateTime(timezone=True), nullable=True)
+    
     created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
 
     def set_senha(self, senha: str):
@@ -932,11 +935,17 @@ def app_home():
             projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
             return render_template("app.html", usuario=u, projetos=projetos, erro="Dê um nome ao projeto.")
 
-        p = Projeto(user_id=u.id, nome=nome, prompt=prompt)
-        db.session.add(p)
-        db.session.commit()
-        return redirect(url_for("projeto_view", projeto_id=p.id))
+@app.route("/projeto/<int:projeto_id>"), nome=nome, prompt=prompt)
+db.session.add(p)
 
+if not u.usou_gratis:
+    u.usou_gratis = True
+    u.gratis_expira_em = now_utc() + timedelta(hours=1)
+
+db.session.commit()
+return redirect(url_for("projeto_view", projeto_id=p.id))
+
+    
     projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
     return render_template("app.html", usuario=u, projetos=projetos)
 
@@ -954,10 +963,17 @@ def projeto_view(projeto_id):
     ).order_by(AcessoProjeto.expires_at.desc()).first()
 
     acesso_ativo = False
-    expira_em = None
-    if acesso and acesso.expires_at > now_utc():
-        acesso_ativo = True
-        expira_em = acesso.expires_at
+gratis_ativo = False
+expira_em = None
+
+if acesso and acesso.expires_at > now_utc():
+    acesso_ativo = True
+    expira_em = acesso.expires_at
+
+if u.gratis_expira_em and u.gratis_expira_em > now_utc():
+    gratis_ativo = True
+    acesso_ativo = True
+    expira_em = u.gratis_expira_em
 
     return render_template(
         "projeto.html",
@@ -965,6 +981,7 @@ def projeto_view(projeto_id):
         projeto=p,
         premium=premium,
         acesso_ativo=acesso_ativo,
+        gratis_ativo=gratis_ativo,
         expira_em=expira_em,
         price_avulso=avulso_price,
         price_premium=premium_price
@@ -1149,6 +1166,14 @@ def status():
     if u.premium_ativo():
         return jsonify({"paid": True, "premium": True})
 
+    if u.gratis_expira_em and u.gratis_expira_em > now_utc():
+    return jsonify({
+        "paid": True,
+        "premium": False,
+        "gratis": True,
+        "expires_at": u.gratis_expira_em.isoformat()
+    })
+
     if not projeto_id:
         return jsonify({"paid": False, "premium": False})
 
@@ -1172,13 +1197,17 @@ def download_projeto(projeto_id):
     u = current_user()
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
-    if not u.premium_ativo():
-        acesso = AcessoProjeto.query.filter_by(
-            user_id=u.id, projeto_id=p.id
-        ).order_by(AcessoProjeto.expires_at.desc()).first()
+   if not u.premium_ativo():
+    gratis_ativo = u.gratis_expira_em and u.gratis_expira_em > now_utc()
 
-        if not acesso or acesso.expires_at <= now_utc():
-            return "Acesso negado. Compre a diária (24h) ou assine o Premium.", 403
+    acesso = AcessoProjeto.query.filter_by(
+        user_id=u.id, projeto_id=p.id
+    ).order_by(AcessoProjeto.expires_at.desc()).first()
+
+    acesso_pago_ativo = acesso and acesso.expires_at > now_utc()
+
+    if not gratis_ativo and not acesso_pago_ativo:
+        return redirect(url_for("projeto_view", projeto_id=p.id))
 
     wb = generate_workbook_from_prompt(p.nome, p.prompt or "")
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
