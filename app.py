@@ -1162,6 +1162,7 @@ def status():
         "paid": True,
         "premium": False,
         "gratis": True,
+
         "expires_at": u.gratis_expira_em.isoformat()
     })
 
