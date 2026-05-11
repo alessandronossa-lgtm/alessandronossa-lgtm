@@ -935,22 +935,19 @@ def app_home():
             projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
             return render_template("app.html", usuario=u, projetos=projetos, erro="Dê um nome ao projeto.")
 
-@app.route("/projeto/<int:projeto_id>")
-@login_required
-def projeto_view(projeto_id):
+        p = Projeto(user_id=u.id, nome=nome, prompt=prompt)
+        db.session.add(p)
 
-db.session.add(p)
+        if not u.usou_gratis:
+            u.usou_gratis = True
+            u.gratis_expira_em = now_utc() + timedelta(hours=1)
 
-if not u.usou_gratis:
-    u.usou_gratis = True
-    u.gratis_expira_em = now_utc() + timedelta(hours=1)
+        db.session.commit()
+        return redirect(url_for("projeto_view", projeto_id=p.id))
 
-db.session.commit()
-return redirect(url_for("projeto_view", projeto_id=p.id))
-
-    
     projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
     return render_template("app.html", usuario=u, projetos=projetos)
+
 
 @app.route("/projeto/<int:projeto_id>")
 @login_required
@@ -966,17 +963,17 @@ def projeto_view(projeto_id):
     ).order_by(AcessoProjeto.expires_at.desc()).first()
 
     acesso_ativo = False
-gratis_ativo = False
-expira_em = None
+    gratis_ativo = False
+    expira_em = None
 
-if acesso and acesso.expires_at > now_utc():
-    acesso_ativo = True
-    expira_em = acesso.expires_at
+    if acesso and acesso.expires_at > now_utc():
+        acesso_ativo = True
+        expira_em = acesso.expires_at
 
-if u.gratis_expira_em and u.gratis_expira_em > now_utc():
-    gratis_ativo = True
-    acesso_ativo = True
-    expira_em = u.gratis_expira_em
+    if u.gratis_expira_em and u.gratis_expira_em > now_utc():
+        gratis_ativo = True
+        acesso_ativo = True
+        expira_em = u.gratis_expira_em
 
     return render_template(
         "projeto.html",
@@ -1004,15 +1001,6 @@ def atualizar_projeto(projeto_id):
         db.session.commit()
 
     return redirect(url_for("projeto_view", projeto_id=p.id))
-
-
-    
-    novo_prompt = (request.form.get("prompt") or "").strip()
-
-    if novo_prompt:
-        p.prompt = novo_prompt
-        db.session.commit()
-
   
 
 # =====================================================
