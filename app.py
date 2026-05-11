@@ -1158,13 +1158,12 @@ def status():
         return jsonify({"paid": True, "premium": True})
 
     if u.gratis_expira_em and u.gratis_expira_em > now_utc():
-    return jsonify({
-        "paid": True,
-        "premium": False,
-        "gratis": True,
-
-        "expires_at": u.gratis_expira_em.isoformat()
-    })
+        return jsonify({
+            "paid": True,
+            "premium": False,
+            "gratis": True,
+            "expires_at": u.gratis_expira_em.isoformat()
+        })
 
     if not projeto_id:
         return jsonify({"paid": False, "premium": False})
@@ -1174,10 +1173,13 @@ def status():
     ).order_by(AcessoProjeto.expires_at.desc()).first()
 
     if acesso and acesso.expires_at > now_utc():
-        return jsonify({"paid": True, "premium": False, "expires_at": acesso.expires_at.isoformat()})
+        return jsonify({
+            "paid": True,
+            "premium": False,
+            "expires_at": acesso.expires_at.isoformat()
+        })
 
     return jsonify({"paid": False, "premium": False})
-
 
 # =====================================================
 # DOWNLOAD
