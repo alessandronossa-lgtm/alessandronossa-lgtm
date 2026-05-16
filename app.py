@@ -7,1418 +7,1422 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import (
-            Flask, render_template, request, redirect, jsonify,
-            session, url_for, send_file, abort
-        )
+    Flask, render_template, request, redirect, jsonify,
+    session, url_for, send_file, abort
+)
 import mercadopago
 import requests
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image
-        
-        
-        # =====================================================
-        # APP CONFIG
-        # =====================================================
-        
+
+
+# =====================================================
+# APP CONFIG
+# =====================================================
+
 app = Flask(__name__)
-        
-        SECRET_KEY = os.getenv("SECRET_KEY")
-        if not SECRET_KEY:
-            raise Exception("SECRET_KEY não configurada.")
-        app.secret_key = SECRET_KEY
-        
-        DATABASE_URL = os.getenv("DATABASE_URL")
-        if not DATABASE_URL:
-            raise Exception("DATABASE_URL não configurada.")
-        
-        if DATABASE_URL.startswith("postgres://"):
-            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise Exception("SECRET_KEY não configurada.")
+app.secret_key = SECRET_KEY
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise Exception("DATABASE_URL não configurada.")
+
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
-        
+
 db = SQLAlchemy(app)
-        
+
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
-        if not MP_ACCESS_TOKEN:
-            raise Exception("MP_ACCESS_TOKEN não configurado.")
-        sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
-        
-        ADMIN_EMAIL = (os.getenv("ADMIN_EMAIL") or "promptsheetbrasil@gmail.com").strip().lower()
-        
-        
-        def now_utc():
-            return datetime.now(timezone.utc)
-        
-              
-        def base_url():
-            env = os.getenv("BASE_URL")
-            if env and env.strip():
-                return env.rstrip("/")
-            return "https://usepromptsheet.com"
-        
-        
-        # =====================================================
-        # MODELS
-        # =====================================================
-        
-        class Config(db.Model):
-            __tablename__ = "config"
-        
-            id = db.Column(db.Integer, primary_key=True)
-            price_avulso_24h = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("1.00"))
-            price_premium_mensal = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("1.90"))
-            updated_at = db.Column(db.DateTime(timezone=True), default=now_utc, onupdate=now_utc)
-        
-        
-        class Usuario(db.Model):
-            __tablename__ = "usuario"
-        
-            id = db.Column(db.Integer, primary_key=True)
-            email = db.Column(db.String(150), unique=True, nullable=False)
-            senha_hash = db.Column(db.String(255), nullable=False)
-        
-            subscription_status = db.Column(db.String(50), default="none")
-            subscription_id = db.Column(db.String(120), nullable=True)
-            free_premium_until = db.Column(db.DateTime(timezone=True), nullable=True)
-        
-            usou_gratis = db.Column(db.Boolean, default=False)
-            gratis_expira_em = db.Column(db.DateTime(timezone=True), nullable=True)
-            
-            created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
-        
-            def set_senha(self, senha: str):
-                self.senha_hash = generate_password_hash(senha)
-        
-            def verificar_senha(self, senha: str) -> bool:
-                return check_password_hash(self.senha_hash, senha)
-        
-            def premium_ativo(self) -> bool:
-                status = (self.subscription_status or "").lower()
-                if status in ("authorized", "active"):
-                    return True
-                if self.free_premium_until and self.free_premium_until > now_utc():
-                    return True
-                return False
-        
-            def is_admin(self) -> bool:
-                return (self.email or "").strip().lower() == ADMIN_EMAIL
-        
-        
-        class Projeto(db.Model):
-            __tablename__ = "projeto"
-        
-            id = db.Column(db.Integer, primary_key=True)
-            user_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
-            nome = db.Column(db.String(120), nullable=False)
-            prompt = db.Column(db.Text, nullable=True)
-            created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
-        
-        
-        class AcessoProjeto(db.Model):
-            __tablename__ = "acesso_projeto"
-        
-            id = db.Column(db.Integer, primary_key=True)
-            user_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
-            projeto_id = db.Column(db.Integer, db.ForeignKey("projeto.id"), nullable=False)
-            expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
-            payment_id = db.Column(db.String(120), nullable=True)
-            created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
-        
-        
-        with app.app_context():
-            db.create_all()
-        
-        
-        # =====================================================
-        # HELPERS GERAIS
-        # =====================================================
-        
-        def get_config() -> Config:
-            cfg = db.session.get(Config, 1)
-        
-            if not cfg:
-                cfg = Config(id=1)
-                db.session.add(cfg)
-        
-            # valores forçados para teste
-            cfg.price_avulso_24h = Decimal("1.00")
-            cfg.price_premium_mensal = Decimal("1.90")
-        
-            db.session.commit()
-            return cfg
-        
-        
-        def get_prices():
-            cfg = get_config()
-            return float(cfg.price_avulso_24h), float(cfg.price_premium_mensal)
-        
-        
-        def current_user():
-            uid = session.get("user_id")
-            if not uid:
-                return None
-            return db.session.get(Usuario, uid)
-        
-        
-        def login_required(fn):
-            @wraps(fn)
-            def wrapper(*args, **kwargs):
-                if not session.get("user_id"):
-                    return redirect(url_for("login"))
-                return fn(*args, **kwargs)
-            return wrapper
-        
-        
-        def admin_required(fn):
-            @wraps(fn)
-            def wrapper(*args, **kwargs):
-                u = current_user()
-                if not u:
-                    return redirect(url_for("login"))
-                if not u.is_admin():
-                    abort(403)
-                return fn(*args, **kwargs)
-            return wrapper
-        
-        
-        def sanitize_project_filename(name: str) -> str:
-            safe = secure_filename((name or "planilha").strip())
-            return safe or "planilha"
-        
-        
-        def to_decimal(value, fallback: Decimal) -> Decimal:
-            try:
-                return Decimal(str(value).replace(",", ".").strip())
-            except (InvalidOperation, AttributeError, ValueError):
-                return fallback
-        
-        
-        
-        # =====================================================
-        # MOTOR DE GERAÇÃO DE PLANILHA
-        # =====================================================
-        
-        def extrair_percentual_comissao(prompt: str):
-            match = re.search(r"(\d+)\s*%", prompt)
-            if match:
-                return int(match.group(1)) / 100
-            return None
-        
-        def normalize_text(text: str) -> str:
-            if not text:
-                return ""
-            text = unicodedata.normalize("NFKD", text)
-            text = "".join(c for c in text if not unicodedata.combining(c))
-            return text.lower().strip()
-        
-        
-        def clean_column_name(name: str) -> str:
-            name = re.sub(r"\s+", " ", (name or "").strip(" -,:;|"))
-            if not name:
-                return ""
-            return name[:40]
-        
-        
-        def normalizar_nome_coluna(name: str) -> str:
-            n = normalize_text(name)
-        
-            if "placa" in n:
-                return "Placa"
-            if "modelo" in n:
-                return "Modelo"
-            if n in ("km", "quilometragem") or "km " in n or " km" in n:
-                return "Km"
-            if "local" in n:
-                return "Local"
-            if "atividade" in n:
-                return "Atividade"
-            if "gasto" in n:
-                return "Gasto"
-            if "cliente" in n:
-                return "Cliente"
-            if "produto" in n:
-                return "Produto"
-            if "quantidade" in n or n == "qtd":
-                return "Quantidade"
-            if "preco unitario" in n or "preço unitário" in n:
-                return "Preço Unitário"
-            if "valor total" in n:
-                return "Valor Total"
-            if n == "data":
-                return "Data"
-            if "descricao" in n or "descrição" in n:
-                return "Descrição"
-            if "fornecedor" in n:
-                return "Fornecedor"
-            if "categoria" in n:
-                return "Categoria"
-            if "estoque minimo" in n or "estoque mínimo" in n:
-                return "Estoque Mínimo"
-            if "forma de pagamento" in n:
-                return "Forma de Pagamento"
-            if "status" in n:
-                return "Status"
-            if "entrada" in n:
-                return "Entrada"
-            if "saida" in n or "saída" in n:
-                return "Saída"
-            if "saldo" in n:
-                return "Saldo"
-            if "telefone" in n:
-                return "Telefone"
-            if "e-mail" in n or "email" in n:
-                return "E-mail"
-            if "cidade" in n:
-                return "Cidade"
-            if "cargo" in n:
-                return "Cargo"
-            if "nome" in n:
-                return "Nome"
-            if "observacao" in n or "observação" in n:
-                return "Observação"
-            if "data da revisao" in n or "data da revisão" in n:
-                return "Data Da Revisão"
-        
-            return name.strip().title()
-        
-        
-        def unique_columns(columns):
-            seen = set()
-            final = []
-            for col in columns:
-                key = normalize_text(col)
-                if key and key not in seen:
-                    seen.add(key)
-                    final.append(col)
-            return final
-        
-        
-        def detectar_cor_cabecalho(prompt: str) -> str:
-            prompt = normalize_text(prompt)
-        
-            if "vermelho" in prompt:
-                return "FF0000"
-            if "verde" in prompt:
-                return "00B050"
-            if "preto" in prompt:
-                return "000000"
-            if "cinza" in prompt:
-                return "808080"
-            if "azul" in prompt:
-                return "1F4E78"
-        
-            return "1F4E78"
-        
-        
-        def detectar_sem_totais(prompt: str) -> bool:
-            p = normalize_text(prompt)
-            termos = [
-                "sem linha de totais",
-                "sem totais",
-                "nao mostrar totais",
-                "não mostrar totais",
-                "sem total",
-            ]
-            return any(t in p for t in termos)
-        
-        
-        def split_candidate_columns(text: str):
-            text = (text or "").replace("\n", ", ")
-            text = re.sub(r"\s+e\s+", ", ", text, flags=re.IGNORECASE)
-            text = text.replace(";", ",").replace("|", ",")
-            parts = [clean_column_name(p) for p in text.split(",")]
-            return [p for p in parts if p]
-        
-        
-        def extract_column_widths(prompt: str):
-            widths = {}
-            if not prompt:
-                return widths
-        
-            match = re.search(r"larguras?\s*:\s*(.+)", prompt, flags=re.IGNORECASE)
-            if not match:
-                return widths
-        
-            trecho = match.group(1)
-            trecho = re.split(r"\.|\n", trecho)[0]
-        
-            partes = [p.strip() for p in trecho.split(",") if p.strip()]
-        
-            for parte in partes:
-                m = re.match(r"(.+?)\s+(\d+)$", parte)
-                if m:
-                    nome = normalizar_nome_coluna(m.group(1).strip())
-                    largura = int(m.group(2))
-                    if largura < 8:
-                        largura = 8
-                    if largura > 70:
-                        largura = 70
-                    widths[nome] = largura
-        
-            return widths
-        
-        
-        def extract_explicit_columns(prompt: str):
-            if not prompt:
-                return []
-        
-            prompt_clean = prompt.strip()
-        
-            patterns = [
-                r"colunas?\s*[:\-]\s*(.+)",
-                r"colunas?\s+de\s+(.+)",
-                r"coluna\s*[:\-]\s*(.+)",
-                r"coluna\s+(.+)",
-                r"deve ter\s+colunas?\s*[:\-]?\s*(.+)",
-                r"nela deve ter\s+colunas?\s*[:\-]?\s*(.+)",
-                r"campos?\s*[:\-]\s*(.+)",
-                r"campos?\s+de\s+(.+)",
-            ]
-        
-            for pattern in patterns:
-                match = re.search(pattern, prompt_clean, flags=re.IGNORECASE)
-                if match:
-                    tail = match.group(1)
-        
-                    tail = re.split(
-                        r"\.|\n|gostaria|quero que|quero também|quero tambem|tambem|também|mudar|alterar|trocar|deixar|ficar|cabeçalho|cabecalho|cor|fonte|titulo|título|larguras?",
-                        tail,
-                        maxsplit=1,
-                        flags=re.IGNORECASE
-                    )[0]
-        
-                    cols = split_candidate_columns(tail)
-                    if cols:
-                        return [normalizar_nome_coluna(c) for c in cols]
-        
-            return []
-        
-        
-        
-        
-        
-        
-        
-        def infer_columns_from_prompt(prompt: str):
-            p = normalize_text(prompt)
-        
-            if any(k in p for k in ["veiculo", "veiculos", "frota", "carro", "carros", "moto", "motos"]):
-                return ["Placa", "Modelo", "Km"]
-        
-            if any(k in p for k in ["estoque", "inventario", "almoxarifado"]):
-                return ["Data", "Produto", "Categoria", "Quantidade", "Estoque Mínimo", "Fornecedor"]
-        
-            if any(k in p for k in ["venda", "vendas", "comissao", "comissão", "faturamento"]):
-                return ["Data", "Cliente", "Produto", "Quantidade", "Preço Unitário", "Valor Total"]
-        
-            if any(k in p for k in ["financeiro", "fluxo de caixa", "caixa"]):
-                return ["Data", "Descrição", "Categoria", "Entrada", "Saída", "Saldo"]
-        
-            if any(k in p for k in ["despesa", "despesas", "gastos", "custos"]):
-                return ["Data", "Descrição", "Categoria", "Valor", "Forma de Pagamento", "Observação"]
-        
-            if any(k in p for k in ["pedido", "pedidos", "orcamento", "orçamento"]):
-                return ["Data", "Cliente", "Produto", "Quantidade", "Preço Unitário", "Valor Total", "Status"]
-        
-            if any(k in p for k in ["cliente", "clientes", "cadastro de clientes"]):
-                return ["Nome", "Telefone", "E-mail", "Cidade", "Observação"]
-        
-            if any(k in p for k in ["funcionario", "funcionário", "colaborador", "equipe"]):
-                return ["Nome", "Cargo", "Telefone", "E-mail", "Cidade", "Observação"]
-        
-            return ["Data", "Descrição", "Valor"]
-        
-        
-        
-        
-        
-        
-        
-        def detect_columns(prompt: str):
-            explicit = extract_explicit_columns(prompt)
-            if explicit:
-                cols = explicit
-            else:
-                inteligentes = extrair_colunas(prompt)
-                if inteligentes:
-                    cols = inteligentes
-                else:
-                    cols = infer_columns_from_prompt(prompt)
-        
-            # 👇 NOVO BLOCO PRO
-            if "comissao" in normalize_text(prompt):
-                if "Comissão" not in cols:
-                    cols.append("Comissão")
-        
-            return cols
-        
-        
-        
-        
-        
-        def is_money_column(name: str) -> bool:
-            n = normalize_text(name)
-            keys = [
-                "preco", "preço", "valor", "entrada", "saida", "saída",
-                "saldo", "custo", "total", "gasto", "comissao", "comissão"
-            ]
-            return any(k in n for k in keys)
-        
-        
-        def is_integer_column(name: str) -> bool:
-            n = normalize_text(name)
-            keys = ["quantidade", "qtd", "estoque", "minimo", "mínimo", "km", "quilometragem"]
-            return any(k in n for k in keys)
-        
-        
-        def col_index(columns, target):
-            target_n = normalize_text(target)
-            for idx, col in enumerate(columns, start=1):
-                if normalize_text(col) == target_n:
-                    return idx
-            return None
-        
-        
-        def value_for_column(col_name: str, row_number: int):
-            name = normalize_text(col_name)
-        
-            if name == "data":
-                return f"0{row_number}/04/2026"
-            if name == "cliente":
-                return f"Cliente Exemplo {row_number - 5}"
-            if name == "produto":
-                return f"Produto {chr(64 + row_number - 5)}"
-            if name == "categoria":
-                return f"Categoria {row_number - 5}"
-            if name == "fornecedor":
-                return "Fornecedor Exemplo"
-            if name == "status":
-                return "Pendente" if row_number == 6 else "Pago"
-            if name == "descricao":
-                return "Lançamento exemplo" if row_number == 6 else "Movimentação exemplo"
-            if name == "observacao" or name == "observação":
-                return ""
-            if name == "forma de pagamento":
-                return "PIX" if row_number == 6 else "Boleto"
-            if name == "telefone":
-                return "(27) 99999-9999"
-            if name == "e-mail":
-                return f"contato{row_number - 5}@exemplo.com"
-            if name == "cidade":
-                return "Vila Velha"
-            if name == "nome":
-                return f"Nome Exemplo {row_number - 5}"
-            if name == "cargo":
-                return "Vendedor"
-            if name == "placa":
-                return "ABC1D23" if row_number == 6 else "XYZ9K87"
-            if name == "modelo":
-                return "Strada" if row_number == 6 else "Hilux"
-            if name == "km":
-                return 45230 if row_number == 6 else 78110
-            if name == "data da revisao" or name == "data da revisão":
-                return "10/04/2026" if row_number == 6 else "15/04/2026"
-            if name in ("quantidade", "qtd"):
-                return 2 if row_number == 6 else 3
-            if name == "estoque minimo" or name == "estoque mínimo":
-                return 10 if row_number == 6 else 5
-            if name == "estoque":
-                return 25 if row_number == 6 else 8
-            if name == "preco unitario" or name == "preço unitário":
-                return 35.0 if row_number == 6 else 20.0
-            if name == "valor" or name == "gasto":
-                return 150.0 if row_number == 6 else 90.0
-            if name == "entrada":
-                return 500.0 if row_number == 6 else 0.0
-            if name == "saida" or name == "saída":
-                return 0.0 if row_number == 6 else 120.0
-        
-            if name in ("valor total", "saldo"):
-                return None
-        
-            return ""
-        
-        
-        def aplicar_largura_automatica(ws, columns, prompt=None):
-            larguras_definidas = extract_column_widths(prompt)
-        
-            for col_idx, col_name in enumerate(columns, start=1):
-                nome_normalizado = normalizar_nome_coluna(col_name)
-        
-                if nome_normalizado in larguras_definidas:
-                    ws.column_dimensions[get_column_letter(col_idx)].width = larguras_definidas[nome_normalizado]
-                    continue
-        
-                nome = normalize_text(col_name)
-        
-                if "descricao" in nome or "produto" in nome or "atividade" in nome or "observacao" in nome or "observação" in nome:
-                    width = 30
-                elif "cliente" in nome or "nome" in nome or "local" in nome or "modelo" in nome:
-                    width = 25
-                elif "data" in nome:
-                    width = 18
-                elif "valor" in nome or "preco" in nome or "preço" in nome or "gasto" in nome:
-                    width = 15
-                elif "quantidade" in nome or "qtd" in nome or "km" in nome:
-                    width = 12
-                else:
-                    width = 18
-        
-                ws.column_dimensions[get_column_letter(col_idx)].width = width
-        
-        
-        
-        
-        
-        
-        
-        
-        def inserir_logo(ws):
-            try:
-                logo_path = os.path.join(app.root_path, "static", "logo.png")
-                img = Image(logo_path)
-                img.width = 50
-                img.height = 50
-                ws.add_image(img, "A2")
-            except Exception as e:
-                print("Erro ao inserir logo:", e)
-        
-        
-        def style_sheet(ws, columns, prompt, project_name):
-            header_color = detectar_cor_cabecalho(prompt)
-            light_fill = "F7FBFF"
-            total_fill = "FFF2CC"
-            white = "FFFFFF"
-        
-            inserir_logo(ws)
-        
-            thin_gray = Side(style="thin", color="D9D9D9")
-            border = Border(
-                left=thin_gray,
-                right=thin_gray,
-                top=thin_gray,
-                bottom=thin_gray
-            )
-        
-            ws["B2"] = f"Projeto: {project_name}"
-            ws["B2"].font = Font(size=12, bold=True, color=header_color)
-            ws["B2"].alignment = Alignment(horizontal="left", vertical="center")
-        
-            header_row = 5
-            for idx, col in enumerate(columns, start=1):
-                cell = ws.cell(row=header_row, column=idx, value=col)
-                cell.font = Font(bold=True, color=white)
-                cell.fill = PatternFill("solid", fgColor=header_color)
+if not MP_ACCESS_TOKEN:
+    raise Exception("MP_ACCESS_TOKEN não configurado.")
+sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
+
+ADMIN_EMAIL = (os.getenv("ADMIN_EMAIL") or "promptsheetbrasil@gmail.com").strip().lower()
+
+
+def now_utc():
+    return datetime.now(timezone.utc)
+
+
+def base_url():
+    env = os.getenv("BASE_URL")
+    if env and env.strip():
+        return env.rstrip("/")
+    return "https://usepromptsheet.com"
+
+
+# =====================================================
+# MODELS
+# =====================================================
+
+class Config(db.Model):
+    __tablename__ = "config"
+
+    id = db.Column(db.Integer, primary_key=True)
+    price_avulso_24h = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("1.00"))
+    price_premium_mensal = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("1.90"))
+    updated_at = db.Column(db.DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
+
+class Usuario(db.Model):
+    __tablename__ = "usuario"
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    senha_hash = db.Column(db.String(255), nullable=False)
+
+    subscription_status = db.Column(db.String(50), default="none")
+    subscription_id = db.Column(db.String(120), nullable=True)
+    free_premium_until = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    usou_gratis = db.Column(db.Boolean, default=False)
+    gratis_expira_em = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
+
+    def set_senha(self, senha: str):
+        self.senha_hash = generate_password_hash(senha)
+
+    def verificar_senha(self, senha: str) -> bool:
+        return check_password_hash(self.senha_hash, senha)
+
+    def premium_ativo(self) -> bool:
+        status = (self.subscription_status or "").lower()
+        if status in ("authorized", "active"):
+            return True
+        if self.free_premium_until and self.free_premium_until > now_utc():
+            return True
+        return False
+
+    def is_admin(self) -> bool:
+        return (self.email or "").strip().lower() == ADMIN_EMAIL
+
+
+class Projeto(db.Model):
+    __tablename__ = "projeto"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    nome = db.Column(db.String(120), nullable=False)
+    prompt = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
+
+
+class AcessoProjeto(db.Model):
+    __tablename__ = "acesso_projeto"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    projeto_id = db.Column(db.Integer, db.ForeignKey("projeto.id"), nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    payment_id = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
+
+
+with app.app_context():
+    db.create_all()
+    # Garante as novas colunas do teste grátis em bancos já existentes (PostgreSQL)
+    try:
+        db.session.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS usou_gratis BOOLEAN DEFAULT FALSE"))
+        db.session.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS gratis_expira_em TIMESTAMP WITH TIME ZONE"))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print("Aviso migração grátis:", e)
+
+
+# =====================================================
+# HELPERS GERAIS
+# =====================================================
+
+def get_config() -> Config:
+    cfg = db.session.get(Config, 1)
+
+    if not cfg:
+        cfg = Config(id=1)
+        db.session.add(cfg)
+
+    # valores forçados para teste
+    cfg.price_avulso_24h = Decimal("1.00")
+    cfg.price_premium_mensal = Decimal("1.90")
+
+    db.session.commit()
+    return cfg
+
+
+def get_prices():
+    cfg = get_config()
+    return float(cfg.price_avulso_24h), float(cfg.price_premium_mensal)
+
+
+def current_user():
+    uid = session.get("user_id")
+    if not uid:
+        return None
+    return db.session.get(Usuario, uid)
+
+
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login"))
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        u = current_user()
+        if not u:
+            return redirect(url_for("login"))
+        if not u.is_admin():
+            abort(403)
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def sanitize_project_filename(name: str) -> str:
+    safe = secure_filename((name or "planilha").strip())
+    return safe or "planilha"
+
+
+def to_decimal(value, fallback: Decimal) -> Decimal:
+    try:
+        return Decimal(str(value).replace(",", ".").strip())
+    except (InvalidOperation, AttributeError, ValueError):
+        return fallback
+
+
+
+# =====================================================
+# MOTOR DE GERAÇÃO DE PLANILHA
+# =====================================================
+
+def extrair_percentual_comissao(prompt: str):
+    match = re.search(r"(\d+)\s*%", prompt)
+    if match:
+        return int(match.group(1)) / 100
+    return None
+
+def normalize_text(text: str) -> str:
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    return text.lower().strip()
+
+
+def clean_column_name(name: str) -> str:
+    name = re.sub(r"\s+", " ", (name or "").strip(" -,:;|"))
+    if not name:
+        return ""
+    return name[:40]
+
+
+def normalizar_nome_coluna(name: str) -> str:
+    n = normalize_text(name)
+
+    if "placa" in n:
+        return "Placa"
+    if "modelo" in n:
+        return "Modelo"
+    if n in ("km", "quilometragem") or "km " in n or " km" in n:
+        return "Km"
+    if "local" in n:
+        return "Local"
+    if "atividade" in n:
+        return "Atividade"
+    if "gasto" in n:
+        return "Gasto"
+    if "cliente" in n:
+        return "Cliente"
+    if "produto" in n:
+        return "Produto"
+    if "quantidade" in n or n == "qtd":
+        return "Quantidade"
+    if "preco unitario" in n or "preço unitário" in n:
+        return "Preço Unitário"
+    if "valor total" in n:
+        return "Valor Total"
+    if n == "data":
+        return "Data"
+    if "descricao" in n or "descrição" in n:
+        return "Descrição"
+    if "fornecedor" in n:
+        return "Fornecedor"
+    if "categoria" in n:
+        return "Categoria"
+    if "estoque minimo" in n or "estoque mínimo" in n:
+        return "Estoque Mínimo"
+    if "forma de pagamento" in n:
+        return "Forma de Pagamento"
+    if "status" in n:
+        return "Status"
+    if "entrada" in n:
+        return "Entrada"
+    if "saida" in n or "saída" in n:
+        return "Saída"
+    if "saldo" in n:
+        return "Saldo"
+    if "telefone" in n:
+        return "Telefone"
+    if "e-mail" in n or "email" in n:
+        return "E-mail"
+    if "cidade" in n:
+        return "Cidade"
+    if "cargo" in n:
+        return "Cargo"
+    if "nome" in n:
+        return "Nome"
+    if "observacao" in n or "observação" in n:
+        return "Observação"
+    if "data da revisao" in n or "data da revisão" in n:
+        return "Data Da Revisão"
+
+    return name.strip().title()
+
+
+def unique_columns(columns):
+    seen = set()
+    final = []
+    for col in columns:
+        key = normalize_text(col)
+        if key and key not in seen:
+            seen.add(key)
+            final.append(col)
+    return final
+
+
+def detectar_cor_cabecalho(prompt: str) -> str:
+    prompt = normalize_text(prompt)
+
+    if "vermelho" in prompt:
+        return "FF0000"
+    if "verde" in prompt:
+        return "00B050"
+    if "preto" in prompt:
+        return "000000"
+    if "cinza" in prompt:
+        return "808080"
+    if "azul" in prompt:
+        return "1F4E78"
+
+    return "1F4E78"
+
+
+def detectar_sem_totais(prompt: str) -> bool:
+    p = normalize_text(prompt)
+    termos = [
+        "sem linha de totais",
+        "sem totais",
+        "nao mostrar totais",
+        "não mostrar totais",
+        "sem total",
+    ]
+    return any(t in p for t in termos)
+
+
+def split_candidate_columns(text: str):
+    text = (text or "").replace("\n", ", ")
+    text = re.sub(r"\s+e\s+", ", ", text, flags=re.IGNORECASE)
+    text = text.replace(";", ",").replace("|", ",")
+    parts = [clean_column_name(p) for p in text.split(",")]
+    return [p for p in parts if p]
+
+
+def extract_column_widths(prompt: str):
+    widths = {}
+    if not prompt:
+        return widths
+
+    match = re.search(r"larguras?\s*:\s*(.+)", prompt, flags=re.IGNORECASE)
+    if not match:
+        return widths
+
+    trecho = match.group(1)
+    trecho = re.split(r"\.|\n", trecho)[0]
+
+    partes = [p.strip() for p in trecho.split(",") if p.strip()]
+
+    for parte in partes:
+        m = re.match(r"(.+?)\s+(\d+)$", parte)
+        if m:
+            nome = normalizar_nome_coluna(m.group(1).strip())
+            largura = int(m.group(2))
+            if largura < 8:
+                largura = 8
+            if largura > 70:
+                largura = 70
+            widths[nome] = largura
+
+    return widths
+
+
+def extract_explicit_columns(prompt: str):
+    if not prompt:
+        return []
+
+    prompt_clean = prompt.strip()
+
+    patterns = [
+        r"colunas?\s*[:\-]\s*(.+)",
+        r"colunas?\s+de\s+(.+)",
+        r"coluna\s*[:\-]\s*(.+)",
+        r"coluna\s+(.+)",
+        r"deve ter\s+colunas?\s*[:\-]?\s*(.+)",
+        r"nela deve ter\s+colunas?\s*[:\-]?\s*(.+)",
+        r"campos?\s*[:\-]\s*(.+)",
+        r"campos?\s+de\s+(.+)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, prompt_clean, flags=re.IGNORECASE)
+        if match:
+            tail = match.group(1)
+
+            tail = re.split(
+                r"\.|\n|gostaria|quero que|quero também|quero tambem|tambem|também|mudar|alterar|trocar|deixar|ficar|cabeçalho|cabecalho|cor|fonte|titulo|título|larguras?",
+                tail,
+                maxsplit=1,
+                flags=re.IGNORECASE
+            )[0]
+
+            cols = split_candidate_columns(tail)
+            if cols:
+                return [normalizar_nome_coluna(c) for c in cols]
+
+    return []
+
+
+
+
+
+
+
+def infer_columns_from_prompt(prompt: str):
+    p = normalize_text(prompt)
+
+    if any(k in p for k in ["veiculo", "veiculos", "frota", "carro", "carros", "moto", "motos"]):
+        return ["Placa", "Modelo", "Km"]
+
+    if any(k in p for k in ["estoque", "inventario", "almoxarifado"]):
+        return ["Data", "Produto", "Categoria", "Quantidade", "Estoque Mínimo", "Fornecedor"]
+
+    if any(k in p for k in ["venda", "vendas", "comissao", "comissão", "faturamento"]):
+        return ["Data", "Cliente", "Produto", "Quantidade", "Preço Unitário", "Valor Total"]
+
+    if any(k in p for k in ["financeiro", "fluxo de caixa", "caixa"]):
+        return ["Data", "Descrição", "Categoria", "Entrada", "Saída", "Saldo"]
+
+    if any(k in p for k in ["despesa", "despesas", "gastos", "custos"]):
+        return ["Data", "Descrição", "Categoria", "Valor", "Forma de Pagamento", "Observação"]
+
+    if any(k in p for k in ["pedido", "pedidos", "orcamento", "orçamento"]):
+        return ["Data", "Cliente", "Produto", "Quantidade", "Preço Unitário", "Valor Total", "Status"]
+
+    if any(k in p for k in ["cliente", "clientes", "cadastro de clientes"]):
+        return ["Nome", "Telefone", "E-mail", "Cidade", "Observação"]
+
+    if any(k in p for k in ["funcionario", "funcionário", "colaborador", "equipe"]):
+        return ["Nome", "Cargo", "Telefone", "E-mail", "Cidade", "Observação"]
+
+    return ["Data", "Descrição", "Valor"]
+
+
+
+
+
+
+
+def detect_columns(prompt: str):
+    explicit = extract_explicit_columns(prompt)
+    if explicit:
+        cols = explicit
+    else:
+        inteligentes = extrair_colunas(prompt)
+        if inteligentes:
+            cols = inteligentes
+        else:
+            cols = infer_columns_from_prompt(prompt)
+
+    # 👇 NOVO BLOCO PRO
+    if "comissao" in normalize_text(prompt):
+        if "Comissão" not in cols:
+            cols.append("Comissão")
+
+    return cols
+
+
+
+
+
+def is_money_column(name: str) -> bool:
+    n = normalize_text(name)
+    keys = [
+        "preco", "preço", "valor", "entrada", "saida", "saída",
+        "saldo", "custo", "total", "gasto", "comissao", "comissão"
+    ]
+    return any(k in n for k in keys)
+
+
+def is_integer_column(name: str) -> bool:
+    n = normalize_text(name)
+    keys = ["quantidade", "qtd", "estoque", "minimo", "mínimo", "km", "quilometragem"]
+    return any(k in n for k in keys)
+
+
+def col_index(columns, target):
+    target_n = normalize_text(target)
+    for idx, col in enumerate(columns, start=1):
+        if normalize_text(col) == target_n:
+            return idx
+    return None
+
+
+def value_for_column(col_name: str, row_number: int):
+    name = normalize_text(col_name)
+
+    if name == "data":
+        return f"0{row_number}/04/2026"
+    if name == "cliente":
+        return f"Cliente Exemplo {row_number - 5}"
+    if name == "produto":
+        return f"Produto {chr(64 + row_number - 5)}"
+    if name == "categoria":
+        return f"Categoria {row_number - 5}"
+    if name == "fornecedor":
+        return "Fornecedor Exemplo"
+    if name == "status":
+        return "Pendente" if row_number == 6 else "Pago"
+    if name == "descricao":
+        return "Lançamento exemplo" if row_number == 6 else "Movimentação exemplo"
+    if name == "observacao" or name == "observação":
+        return ""
+    if name == "forma de pagamento":
+        return "PIX" if row_number == 6 else "Boleto"
+    if name == "telefone":
+        return "(27) 99999-9999"
+    if name == "e-mail":
+        return f"contato{row_number - 5}@exemplo.com"
+    if name == "cidade":
+        return "Vila Velha"
+    if name == "nome":
+        return f"Nome Exemplo {row_number - 5}"
+    if name == "cargo":
+        return "Vendedor"
+    if name == "placa":
+        return "ABC1D23" if row_number == 6 else "XYZ9K87"
+    if name == "modelo":
+        return "Strada" if row_number == 6 else "Hilux"
+    if name == "km":
+        return 45230 if row_number == 6 else 78110
+    if name == "data da revisao" or name == "data da revisão":
+        return "10/04/2026" if row_number == 6 else "15/04/2026"
+    if name in ("quantidade", "qtd"):
+        return 2 if row_number == 6 else 3
+    if name == "estoque minimo" or name == "estoque mínimo":
+        return 10 if row_number == 6 else 5
+    if name == "estoque":
+        return 25 if row_number == 6 else 8
+    if name == "preco unitario" or name == "preço unitário":
+        return 35.0 if row_number == 6 else 20.0
+    if name == "valor" or name == "gasto":
+        return 150.0 if row_number == 6 else 90.0
+    if name == "entrada":
+        return 500.0 if row_number == 6 else 0.0
+    if name == "saida" or name == "saída":
+        return 0.0 if row_number == 6 else 120.0
+
+    if name in ("valor total", "saldo"):
+        return None
+
+    return ""
+
+
+def aplicar_largura_automatica(ws, columns, prompt=None):
+    larguras_definidas = extract_column_widths(prompt)
+
+    for col_idx, col_name in enumerate(columns, start=1):
+        nome_normalizado = normalizar_nome_coluna(col_name)
+
+        if nome_normalizado in larguras_definidas:
+            ws.column_dimensions[get_column_letter(col_idx)].width = larguras_definidas[nome_normalizado]
+            continue
+
+        nome = normalize_text(col_name)
+
+        if "descricao" in nome or "produto" in nome or "atividade" in nome or "observacao" in nome or "observação" in nome:
+            width = 30
+        elif "cliente" in nome or "nome" in nome or "local" in nome or "modelo" in nome:
+            width = 25
+        elif "data" in nome:
+            width = 18
+        elif "valor" in nome or "preco" in nome or "preço" in nome or "gasto" in nome:
+            width = 15
+        elif "quantidade" in nome or "qtd" in nome or "km" in nome:
+            width = 12
+        else:
+            width = 18
+
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+
+
+
+
+
+
+
+def inserir_logo(ws):
+    try:
+        logo_path = os.path.join(app.root_path, "static", "logo.png")
+        img = Image(logo_path)
+        img.width = 50
+        img.height = 50
+        ws.add_image(img, "A2")
+    except Exception as e:
+        print("Erro ao inserir logo:", e)
+
+
+def style_sheet(ws, columns, prompt, project_name):
+    header_color = detectar_cor_cabecalho(prompt)
+    light_fill = "F7FBFF"
+    total_fill = "FFF2CC"
+    white = "FFFFFF"
+
+    inserir_logo(ws)
+
+    thin_gray = Side(style="thin", color="D9D9D9")
+    border = Border(
+        left=thin_gray,
+        right=thin_gray,
+        top=thin_gray,
+        bottom=thin_gray
+    )
+
+    ws["B2"] = f"Projeto: {project_name}"
+    ws["B2"].font = Font(size=12, bold=True, color=header_color)
+    ws["B2"].alignment = Alignment(horizontal="left", vertical="center")
+
+    header_row = 5
+    for idx, col in enumerate(columns, start=1):
+        cell = ws.cell(row=header_row, column=idx, value=col)
+        cell.font = Font(bold=True, color=white)
+        cell.fill = PatternFill("solid", fgColor=header_color)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = border
+
+    ws.freeze_panes = "A6"
+    ws.auto_filter.ref = f"A5:{get_column_letter(len(columns))}5"
+
+    for row in range(6, 60):
+        for col in range(1, len(columns) + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.border = border
+
+
+
+
+
+
+
+
+
+            n = normalize_text(columns[col - 1])
+
+            if "valor" in n or "preco" in n or "preço" in n or "gasto" in n:
+                cell.alignment = Alignment(horizontal="right", vertical="center")
+            elif "quantidade" in n or "qtd" in n or "km" in n:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = border
-        
-            ws.freeze_panes = "A6"
-            ws.auto_filter.ref = f"A5:{get_column_letter(len(columns))}5"
-        
-            for row in range(6, 60):
-                for col in range(1, len(columns) + 1):
-                    cell = ws.cell(row=row, column=col)
-                    cell.border = border
-        
-        
-        
-        
-        
-        
-        
-                    
-        
-                    n = normalize_text(columns[col - 1])
-        
-                    if "valor" in n or "preco" in n or "preço" in n or "gasto" in n:
-                        cell.alignment = Alignment(horizontal="right", vertical="center")
-                    elif "quantidade" in n or "qtd" in n or "km" in n:
-                        cell.alignment = Alignment(horizontal="center", vertical="center")
+            else:
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+
+            if row % 2 == 0:
+                cell.fill = PatternFill("solid", fgColor=light_fill)
+
+    for idx, col in enumerate(columns, start=1):
+        if is_money_column(col):
+            for row in range(6, 200):
+                ws.cell(row=row, column=idx).number_format = 'R$ #,##0.00'
+        elif is_integer_column(col):
+            for row in range(6, 200):
+                ws.cell(row=row, column=idx).number_format = '0'
+
+    colunas_com_total = []
+
+    for idx, col in enumerate(columns, start=1):
+        n = normalize_text(col)
+
+        if any(k in n for k in [
+            "quantidade", "valor", "valor total",
+            "entrada", "saida", "saída",
+            "preco", "preço", "custo",
+            "saldo", "estoque", "gasto"
+        ]):
+            colunas_com_total.append((idx, col))
+
+    if not detectar_sem_totais(prompt) and colunas_com_total:
+        total_row = 8
+
+        ws.cell(row=total_row, column=1, value="Totais")
+        ws.cell(row=total_row, column=1).font = Font(bold=True)
+        ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor=total_fill)
+        ws.cell(row=total_row, column=1).border = border
+
+        for idx in range(2, len(columns) + 1):
+            cell = ws.cell(row=total_row, column=idx)
+            cell.fill = PatternFill("solid", fgColor=total_fill)
+            cell.border = border
+            cell.font = Font(bold=True)
+
+        for idx, col in colunas_com_total:
+            n = normalize_text(col)
+            letter = get_column_letter(idx)
+            cell = ws.cell(row=total_row, column=idx)
+
+            if n == "saldo":
+                cell.value = f"={letter}7"
+            else:
+                cell.value = f"=SUM({letter}6:{letter}7)"
+
+    ws.row_dimensions[1].height = 6
+    ws.row_dimensions[2].height = 18
+    ws.row_dimensions[3].height = 6
+    ws.row_dimensions[5].height = 24
+
+    return ws
+
+
+
+def fill_example_data(ws, columns, prompt):
+    for row in (6, 7):
+        for idx, col in enumerate(columns, start=1):
+            cell = ws.cell(row=row, column=idx)
+
+            valor = value_for_column(col, row)
+            nome = normalize_text(col)
+
+            if nome == "valor total":
+                qtd_idx = col_index(columns, "Quantidade")
+                preco_idx = col_index(columns, "Preço Unitário") or col_index(columns, "Valor Unitário")
+
+                if qtd_idx and preco_idx:
+                    qtd_letter = get_column_letter(qtd_idx)
+                    preco_letter = get_column_letter(preco_idx)
+                    cell.value = f'=IFERROR({qtd_letter}{row}*{preco_letter}{row}, "")'
+                else:
+                    cell.value = None
+
+            elif nome == "saldo":
+                entrada_idx = col_index(columns, "Entrada")
+                saida_idx = col_index(columns, "Saída")
+
+                if entrada_idx and saida_idx:
+                    entrada_letter = get_column_letter(entrada_idx)
+                    saida_letter = get_column_letter(saida_idx)
+
+                    if row == 6:
+                        cell.value = f'=IFERROR({entrada_letter}{row}-{saida_letter}{row}, "")'
                     else:
-                        cell.alignment = Alignment(horizontal="left", vertical="center")
-        
-                    if row % 2 == 0:
-                        cell.fill = PatternFill("solid", fgColor=light_fill)
-        
-            for idx, col in enumerate(columns, start=1):
-                if is_money_column(col):
-                    for row in range(6, 200):
-                        ws.cell(row=row, column=idx).number_format = 'R$ #,##0.00'
-                elif is_integer_column(col):
-                    for row in range(6, 200):
-                        ws.cell(row=row, column=idx).number_format = '0'
-        
-            colunas_com_total = []
-        
-            for idx, col in enumerate(columns, start=1):
-                n = normalize_text(col)
-        
-                if any(k in n for k in [
-                    "quantidade", "valor", "valor total",
-                    "entrada", "saida", "saída",
-                    "preco", "preço", "custo",
-                    "saldo", "estoque", "gasto"
-                ]):
-                    colunas_com_total.append((idx, col))
-        
-            if not detectar_sem_totais(prompt) and colunas_com_total:
-                total_row = 8
-        
-                ws.cell(row=total_row, column=1, value="Totais")
-                ws.cell(row=total_row, column=1).font = Font(bold=True)
-                ws.cell(row=total_row, column=1).fill = PatternFill("solid", fgColor=total_fill)
-                ws.cell(row=total_row, column=1).border = border
-        
-                for idx in range(2, len(columns) + 1):
-                    cell = ws.cell(row=total_row, column=idx)
-                    cell.fill = PatternFill("solid", fgColor=total_fill)
-                    cell.border = border
-                    cell.font = Font(bold=True)
-        
-                for idx, col in colunas_com_total:
-                    n = normalize_text(col)
-                    letter = get_column_letter(idx)
-                    cell = ws.cell(row=total_row, column=idx)
-        
-                    if n == "saldo":
-                        cell.value = f"={letter}7"
-                    else:
-                        cell.value = f"=SUM({letter}6:{letter}7)"
-        
-            ws.row_dimensions[1].height = 6
-            ws.row_dimensions[2].height = 18
-            ws.row_dimensions[3].height = 6
-            ws.row_dimensions[5].height = 24
-        
-            return ws
-        
-        
-        
-        def fill_example_data(ws, columns, prompt):
-            for row in (6, 7):
-                for idx, col in enumerate(columns, start=1):
-                    cell = ws.cell(row=row, column=idx)
-        
-                    valor = value_for_column(col, row)
-                    nome = normalize_text(col)
-        
-                    if nome == "valor total":
-                        qtd_idx = col_index(columns, "Quantidade")
-                        preco_idx = col_index(columns, "Preço Unitário") or col_index(columns, "Valor Unitário")
-        
-                        if qtd_idx and preco_idx:
-                            qtd_letter = get_column_letter(qtd_idx)
-                            preco_letter = get_column_letter(preco_idx)
-                            cell.value = f'=IFERROR({qtd_letter}{row}*{preco_letter}{row}, "")'
-                        else:
-                            cell.value = None
-        
-                    elif nome == "saldo":
-                        entrada_idx = col_index(columns, "Entrada")
-                        saida_idx = col_index(columns, "Saída")
-        
-                        if entrada_idx and saida_idx:
-                            entrada_letter = get_column_letter(entrada_idx)
-                            saida_letter = get_column_letter(saida_idx)
-        
-                            if row == 6:
-                                cell.value = f'=IFERROR({entrada_letter}{row}-{saida_letter}{row}, "")'
-                            else:
-                                saldo_letter = get_column_letter(idx)
-                                cell.value = f'=IFERROR({saldo_letter}{row-1}+{entrada_letter}{row}-{saida_letter}{row}, "")'
-                        else:
-                            cell.value = None
-        
-                    elif nome == "comissao":
-                        perc = extrair_percentual_comissao(prompt)
-                        total_idx = col_index(columns, "Valor Total")
-        
-                        if perc and total_idx:
-                            total_letter = get_column_letter(total_idx)
-                            cell.value = f'=IFERROR({total_letter}{row}*{perc}, "")'
-                        else:
-                            cell.value = None
-        
-                    else:
-                        cell.value = valor
-        
-            aplicar_largura_automatica(ws, columns, prompt)
-        
-        
-        
-        def extrair_colunas(texto):
-            texto = normalize_text(texto or "")
-        
-            modelos = {
-                "vendas": ["Data", "Cliente", "Produto", "Quantidade", "Valor Unitário", "Valor Total"],
-                "estoque": ["Produto", "Categoria", "Quantidade", "Estoque Mínimo", "Fornecedor"],
-                "financeiro": ["Data", "Descrição", "Categoria", "Entrada", "Saída", "Saldo"],
-                "obra": ["Data", "Local", "Atividade", "Material", "Quantidade", "Valor", "Responsável"],
-                "veiculos": ["Placa", "Modelo", "Km", "Data da Revisão", "Observação"],
-                "clientes": ["Nome", "Telefone", "E-mail", "Cidade", "Observação"],
-                "funcionarios": ["Nome", "Cargo", "Telefone", "E-mail", "Salário"],
-                "agenda": ["Data", "Horário", "Compromisso", "Responsável", "Observação"],
-                "orcamento": ["Item", "Descrição", "Quantidade", "Valor Unitário", "Valor Total"],
-                "compras": ["Data", "Produto", "Fornecedor", "Quantidade", "Valor"],
-                "despesas": ["Data", "Descrição", "Categoria", "Valor", "Forma de Pagamento"],
-                "servicos": ["Data", "Cliente", "Serviço", "Valor", "Status"],
-                "entregas": ["Data", "Cliente", "Endereço", "Produto", "Status"],
-            }
-        
-            gatilhos = {
-                "vendas": ["venda", "vendas", "pedido", "pedidos"],
-                "estoque": ["estoque", "mercadoria", "produto", "produtos"],
-                "financeiro": ["financeiro", "fluxo de caixa", "caixa", "entrada", "saida", "saldo"],
-                "obra": ["obra", "construcao", "material", "materiais", "gasto de obra", "gastos de obra"],
-                "veiculos": ["veiculo", "veiculos", "carro", "carros", "frota", "placa", "km", "revisao"],
-                "clientes": ["cliente", "clientes", "cadastro de clientes"],
-                "funcionarios": ["funcionario", "funcionarios", "colaborador", "colaboradores", "equipe"],
-                "agenda": ["agenda", "compromisso", "compromissos", "horario", "horarios"],
-                "orcamento": ["orcamento", "orcamentos", "cotacao", "cotacoes", "proposta", "propostas"],
-                "compras": ["compra", "compras", "fornecedor", "fornecedores"],
-                "despesas": ["despesa", "despesas", "gasto", "gastos"],
-                "servicos": ["servico", "servicos", "atendimento", "atendimentos"],
-                "entregas": ["entrega", "entregas", "delivery"],
-            }
-        
-            for tipo, palavras in gatilhos.items():
-                if any(p in texto for p in palavras):
-                    return modelos[tipo]
-        
-            palavras_chave = {
-                "data": "Data",
-                "produto": "Produto",
-                "cliente": "Cliente",
-                "nome": "Nome",
-                "quantidade": "Quantidade",
-                "qtd": "Quantidade",
-                "valor": "Valor",
-                "preco": "Valor",
-                "total": "Total",
-                "entrada": "Entrada",
-                "saida": "Saída",
-                "saldo": "Saldo",
-                "km": "Km",
-                "placa": "Placa",
-                "modelo": "Modelo",
-                "descricao": "Descrição",
-                "observacao": "Observação",
-                "fornecedor": "Fornecedor",
-                "categoria": "Categoria",
-                "telefone": "Telefone",
-                "email": "E-mail",
-                "cidade": "Cidade",
-                "responsavel": "Responsável",
-                "status": "Status",
-            }
-        
-            colunas = []
-        
-            for chave, nome in palavras_chave.items():
-                if chave in texto:
-                    colunas.append(nome)
-        
-            if colunas:
-                return list(dict.fromkeys(colunas))
-        
-            return ["Item", "Descrição", "Quantidade", "Valor"]
-        
-        def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
-            columns = detect_columns(prompt)
-        
-            wb = Workbook()
-            ws = wb.active
-            ws.title = "Planilha"
-        
-            style_sheet(ws, columns, prompt, project_name)
-            fill_example_data(ws, columns, prompt)
-        
-            return wb
-        
-        
-        
-        
-        
-        
-        
-        # =====================================================
-        # HEALTH
-        # =====================================================
-        
-        @app.route("/healthz")
-        def healthz():
-            return "ok", 200
-        
-        
-        # =====================================================
-        # AUTH ROUTES
-        # =====================================================
-        
-        @app.route("/register", methods=["GET", "POST"])
-        def register():
-            if request.method == "POST":
-                email = (request.form.get("email") or "").strip().lower()
-                senha = request.form.get("senha") or ""
-        
-                if not email or not senha:
-                    return render_template("register.html", erro="Preencha email e senha.")
-        
-                if Usuario.query.filter_by(email=email).first():
-                    return render_template("register.html", erro="Esse email já está cadastrado.")
-        
-                u = Usuario(email=email)
-                u.set_senha(senha)
-                db.session.add(u)
-                db.session.commit()
-        
-                session["user_id"] = u.id
-                return redirect(url_for("app_home"))
-        
-            return render_template("register.html")
-        
-        
-        @app.route("/login", methods=["GET", "POST"])
-        def login():
-            if request.method == "POST":
-                email = (request.form.get("email") or "").strip().lower()
-                senha = request.form.get("senha") or ""
-        
-                u = Usuario.query.filter_by(email=email).first()
-                if not u or not u.verificar_senha(senha):
-                    return render_template("login.html", erro="Email ou senha inválidos.")
-        
-                session["user_id"] = u.id
-                return redirect(url_for("app_home"))
-        
-            return render_template("login.html")
-        
-        
-        @app.route("/logout")
-        def logout():
-            session.clear()
-            return redirect(url_for("index"))
-        
-        
-        # =====================================================
-        # PÁGINAS
-        # =====================================================
-        
-        @app.route("/")
-        def index():
-            u = current_user()
-            if u:
-                return redirect(url_for("app_home"))
-            return render_template("index.html", usuario=u)
-        
-        
-        @app.route("/app", methods=["GET", "POST"])
-        @login_required
-        def app_home():
-            u = current_user()
-        
-            if request.method == "POST":
-                nome = (request.form.get("nome") or "").strip()
-                prompt = ""
-        
-                if not nome:
-                    projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
-                    return render_template("app.html", usuario=u, projetos=projetos, erro="Dê um nome ao projeto.")
-        
-                p = Projeto(user_id=u.id, nome=nome, prompt=prompt)
-                db.session.add(p)
-        
-                if not u.usou_gratis:
-                    u.usou_gratis = True
-                    u.gratis_expira_em = now_utc() + timedelta(hours=1)
-        
-                db.session.commit()
-                return redirect(url_for("projeto_view", projeto_id=p.id))
-        
+                        saldo_letter = get_column_letter(idx)
+                        cell.value = f'=IFERROR({saldo_letter}{row-1}+{entrada_letter}{row}-{saida_letter}{row}, "")'
+                else:
+                    cell.value = None
+
+            elif nome == "comissao":
+                perc = extrair_percentual_comissao(prompt)
+                total_idx = col_index(columns, "Valor Total")
+
+                if perc and total_idx:
+                    total_letter = get_column_letter(total_idx)
+                    cell.value = f'=IFERROR({total_letter}{row}*{perc}, "")'
+                else:
+                    cell.value = None
+
+            else:
+                cell.value = valor
+
+    aplicar_largura_automatica(ws, columns, prompt)
+
+
+
+def extrair_colunas(texto):
+    texto = normalize_text(texto or "")
+
+    modelos = {
+        "vendas": ["Data", "Cliente", "Produto", "Quantidade", "Valor Unitário", "Valor Total"],
+        "estoque": ["Produto", "Categoria", "Quantidade", "Estoque Mínimo", "Fornecedor"],
+        "financeiro": ["Data", "Descrição", "Categoria", "Entrada", "Saída", "Saldo"],
+        "obra": ["Data", "Local", "Atividade", "Material", "Quantidade", "Valor", "Responsável"],
+        "veiculos": ["Placa", "Modelo", "Km", "Data da Revisão", "Observação"],
+        "clientes": ["Nome", "Telefone", "E-mail", "Cidade", "Observação"],
+        "funcionarios": ["Nome", "Cargo", "Telefone", "E-mail", "Salário"],
+        "agenda": ["Data", "Horário", "Compromisso", "Responsável", "Observação"],
+        "orcamento": ["Item", "Descrição", "Quantidade", "Valor Unitário", "Valor Total"],
+        "compras": ["Data", "Produto", "Fornecedor", "Quantidade", "Valor"],
+        "despesas": ["Data", "Descrição", "Categoria", "Valor", "Forma de Pagamento"],
+        "servicos": ["Data", "Cliente", "Serviço", "Valor", "Status"],
+        "entregas": ["Data", "Cliente", "Endereço", "Produto", "Status"],
+    }
+
+    gatilhos = {
+        "vendas": ["venda", "vendas", "pedido", "pedidos"],
+        "estoque": ["estoque", "mercadoria", "produto", "produtos"],
+        "financeiro": ["financeiro", "fluxo de caixa", "caixa", "entrada", "saida", "saldo"],
+        "obra": ["obra", "construcao", "material", "materiais", "gasto de obra", "gastos de obra"],
+        "veiculos": ["veiculo", "veiculos", "carro", "carros", "frota", "placa", "km", "revisao"],
+        "clientes": ["cliente", "clientes", "cadastro de clientes"],
+        "funcionarios": ["funcionario", "funcionarios", "colaborador", "colaboradores", "equipe"],
+        "agenda": ["agenda", "compromisso", "compromissos", "horario", "horarios"],
+        "orcamento": ["orcamento", "orcamentos", "cotacao", "cotacoes", "proposta", "propostas"],
+        "compras": ["compra", "compras", "fornecedor", "fornecedores"],
+        "despesas": ["despesa", "despesas", "gasto", "gastos"],
+        "servicos": ["servico", "servicos", "atendimento", "atendimentos"],
+        "entregas": ["entrega", "entregas", "delivery"],
+    }
+
+    for tipo, palavras in gatilhos.items():
+        if any(p in texto for p in palavras):
+            return modelos[tipo]
+
+    palavras_chave = {
+        "data": "Data",
+        "produto": "Produto",
+        "cliente": "Cliente",
+        "nome": "Nome",
+        "quantidade": "Quantidade",
+        "qtd": "Quantidade",
+        "valor": "Valor",
+        "preco": "Valor",
+        "total": "Total",
+        "entrada": "Entrada",
+        "saida": "Saída",
+        "saldo": "Saldo",
+        "km": "Km",
+        "placa": "Placa",
+        "modelo": "Modelo",
+        "descricao": "Descrição",
+        "observacao": "Observação",
+        "fornecedor": "Fornecedor",
+        "categoria": "Categoria",
+        "telefone": "Telefone",
+        "email": "E-mail",
+        "cidade": "Cidade",
+        "responsavel": "Responsável",
+        "status": "Status",
+    }
+
+    colunas = []
+
+    for chave, nome in palavras_chave.items():
+        if chave in texto:
+            colunas.append(nome)
+
+    if colunas:
+        return list(dict.fromkeys(colunas))
+
+    return ["Item", "Descrição", "Quantidade", "Valor"]
+
+def generate_workbook_from_prompt(project_name: str, prompt: str) -> Workbook:
+    columns = detect_columns(prompt)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Planilha"
+
+    style_sheet(ws, columns, prompt, project_name)
+    fill_example_data(ws, columns, prompt)
+
+    return wb
+
+
+
+
+
+
+
+# =====================================================
+# HEALTH
+# =====================================================
+
+@app.route("/healthz")
+def healthz():
+    return "ok", 200
+
+
+# =====================================================
+# AUTH ROUTES
+# =====================================================
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        senha = request.form.get("senha") or ""
+
+        if not email or not senha:
+            return render_template("register.html", erro="Preencha email e senha.")
+
+        if Usuario.query.filter_by(email=email).first():
+            return render_template("register.html", erro="Esse email já está cadastrado.")
+
+        u = Usuario(email=email)
+        u.set_senha(senha)
+        db.session.add(u)
+        db.session.commit()
+
+        session["user_id"] = u.id
+        return redirect(url_for("app_home"))
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        senha = request.form.get("senha") or ""
+
+        u = Usuario.query.filter_by(email=email).first()
+        if not u or not u.verificar_senha(senha):
+            return render_template("login.html", erro="Email ou senha inválidos.")
+
+        session["user_id"] = u.id
+        return redirect(url_for("app_home"))
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
+
+
+# =====================================================
+# PÁGINAS
+# =====================================================
+
+@app.route("/")
+def index():
+    u = current_user()
+    if u:
+        return redirect(url_for("app_home"))
+    return render_template("index.html", usuario=u)
+
+
+@app.route("/app", methods=["GET", "POST"])
+@login_required
+def app_home():
+    u = current_user()
+
+    if request.method == "POST":
+        nome = (request.form.get("nome") or "").strip()
+        prompt = (request.form.get("prompt") or "").strip()
+
+        if not nome:
             projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
-            return render_template("app.html", usuario=u, projetos=projetos)
-        
-        
-        @app.route("/projeto/<int:projeto_id>")
-        @login_required
-        def projeto_view(projeto_id):
-            u = current_user()
-            p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
-        
-            premium = u.premium_ativo()
-            avulso_price, premium_price = get_prices()
-        
-            acesso = AcessoProjeto.query.filter_by(
-                user_id=u.id, projeto_id=p.id
-            ).order_by(AcessoProjeto.expires_at.desc()).first()
-        
-            acesso_ativo = False
-            gratis_ativo = False
-            expira_em = None
-        
-            if acesso and acesso.expires_at > now_utc():
-                acesso_ativo = True
-                expira_em = acesso.expires_at
-        
-            if u.gratis_expira_em and u.gratis_expira_em > now_utc():
-                gratis_ativo = True
-                acesso_ativo = True
-                expira_em = u.gratis_expira_em
-        
-            return render_template(
-                "projeto.html",
-                usuario=u,
-                projeto=p,
-                premium=premium,
-                acesso_ativo=acesso_ativo,
-                gratis_ativo=gratis_ativo,
-                expira_em=expira_em,
-                price_avulso=avulso_price,
-                price_premium=premium_price
-            )
-        
-        
-        @app.route("/projeto/<int:projeto_id>/atualizar", methods=["POST"])
-        @login_required
-        def atualizar_projeto(projeto_id):
-            u = current_user()
-            p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
-        
-            novo_prompt = (request.form.get("prompt") or "").strip()
-        
-            if novo_prompt:
-                p.prompt = novo_prompt
-                db.session.commit()
-        
+            return render_template("app.html", usuario=u, projetos=projetos, erro="Dê um nome ao projeto.")
+
+        p = Projeto(user_id=u.id, nome=nome, prompt=prompt)
+        db.session.add(p)
+
+        if not u.usou_gratis:
+            u.usou_gratis = True
+            u.gratis_expira_em = now_utc() + timedelta(hours=1)
+
+        db.session.commit()
+        return redirect(url_for("projeto_view", projeto_id=p.id))
+
+    projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
+    return render_template("app.html", usuario=u, projetos=projetos)
+
+
+@app.route("/projeto/<int:projeto_id>")
+@login_required
+def projeto_view(projeto_id):
+    u = current_user()
+    p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
+
+    premium = u.premium_ativo()
+    avulso_price, premium_price = get_prices()
+
+    acesso = AcessoProjeto.query.filter_by(
+        user_id=u.id, projeto_id=p.id
+    ).order_by(AcessoProjeto.expires_at.desc()).first()
+
+    acesso_ativo = False
+    gratis_ativo = False
+    expira_em = None
+
+    if acesso and acesso.expires_at > now_utc():
+        acesso_ativo = True
+        expira_em = acesso.expires_at
+
+    if u.gratis_expira_em and u.gratis_expira_em > now_utc():
+        gratis_ativo = True
+        acesso_ativo = True
+        expira_em = u.gratis_expira_em
+
+    return render_template(
+        "projeto.html",
+        usuario=u,
+        projeto=p,
+        premium=premium,
+        acesso_ativo=acesso_ativo,
+        gratis_ativo=gratis_ativo,
+        expira_em=expira_em,
+        price_avulso=avulso_price,
+        price_premium=premium_price
+    )
+
+
+@app.route("/projeto/<int:projeto_id>/atualizar", methods=["POST"])
+@login_required
+def atualizar_projeto(projeto_id):
+    u = current_user()
+    p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
+
+    novo_prompt = (request.form.get("prompt") or "").strip()
+
+    if novo_prompt:
+        p.prompt = novo_prompt
+        db.session.commit()
+
+    return redirect(url_for("projeto_view", projeto_id=p.id))
+
+
+# =====================================================
+# PREMIUM
+# =====================================================
+
+@app.route("/premium")
+@login_required
+def premium_page():
+    u = current_user()
+    _, premium_price = get_prices()
+    return render_template("premium.html", usuario=u, price_premium=premium_price)
+
+
+@app.route("/premium/assinar", methods=["POST"])
+@login_required
+def premium_assinar():
+    u = current_user()
+
+    if u.premium_ativo():
+        return jsonify({"erro": "Você já possui Premium ativo."}), 400
+
+    _, premium_price = get_prices()
+
+    url = "https://api.mercadopago.com/preapproval"
+    headers = {
+        "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "reason": "PromptSheet Premium - Acesso ilimitado",
+        "payer_email": u.email,
+        "auto_recurring": {
+            "frequency": 1,
+            "frequency_type": "months",
+            "transaction_amount": float(premium_price),
+            "currency_id": "BRL"
+        },
+        "back_url": f"{base_url()}/premium/retorno",
+        "external_reference": f"user:{u.id}"
+    }
+
+    r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=30)
+
+    print("MP preapproval status:", r.status_code)
+    print("MP preapproval body:", r.text)
+
+    if r.status_code >= 400:
+        return jsonify({"erro": "Falha ao criar assinatura.", "detalhes": r.text}), 500
+
+    resp = r.json()
+    init_point = resp.get("init_point")
+    sub_id = resp.get("id")
+
+    if not init_point or not sub_id:
+        return jsonify({"erro": "Resposta inesperada do Mercado Pago.", "detalhes": resp}), 500
+
+    u.subscription_id = sub_id
+    u.subscription_status = (resp.get("status") or "pending").lower()
+    db.session.commit()
+
+    return jsonify({"init_point": init_point})
+
+
+@app.route("/premium/retorno")
+@login_required
+def premium_retorno():
+    return redirect(url_for("app_home"))
+
+
+# =====================================================
+# AVULSO 24H
+# =====================================================
+
+@app.route("/projeto/<int:projeto_id>/comprar_diaria", methods=["POST"])
+@login_required
+def comprar_diaria(projeto_id):
+    u = current_user()
+    p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
+
+    if u.premium_ativo():
+        print("LOG comprar_diaria: usuário já é premium", flush=True)
+        return jsonify({"erro": "Você já é Premium."}), 400
+
+    avulso_price, _ = get_prices()
+    external_reference = f"user:{u.id}|project:{p.id}|kind:daily"
+
+    preference_data = {
+        "items": [
+            {
+                "id": f"project-{p.id}",
+                "title": f"Acesso 24h - Projeto {p.nome}",
+                "description": f"Acesso temporário ao projeto {p.nome}",
+                "quantity": 1,
+                "currency_id": "BRL",
+                "unit_price": float(avulso_price)
+            }
+        ],
+        "payer": {
+            "email": u.email
+        },
+        "external_reference": external_reference,
+        "notification_url": f"{base_url()}/webhook",
+        "back_urls": {
+            "success": f"{base_url()}/pendente/{p.id}",
+            "failure": f"{base_url()}/pendente/{p.id}",
+            "pending": f"{base_url()}/pendente/{p.id}",
+        },
+        "auto_return": "approved",
+        "binary_mode": False,
+        "statement_descriptor": "PROMPTSHEET"
+    }
+
+    print("LOG comprar_diaria: iniciou", flush=True)
+    print(f"LOG comprar_diaria: user_id={u.id} projeto_id={p.id} email={u.email}", flush=True)
+    print(f"LOG comprar_diaria: preference_data={json.dumps(preference_data, ensure_ascii=False, default=str)}", flush=True)
+
+    response = sdk.preference().create(preference_data)
+
+    print(f"LOG comprar_diaria: response={json.dumps(response, ensure_ascii=False, default=str)}", flush=True)
+
+    mp_resp = response.get("response", {})
+    init_point = mp_resp.get("init_point")
+    sandbox_init_point = mp_resp.get("sandbox_init_point")
+
+    if not init_point and not sandbox_init_point:
+        print("LOG comprar_diaria: não gerou init_point", flush=True)
+        return jsonify({
+            "erro": "Não foi possível gerar o link de pagamento.",
+            "detalhes": response
+        }), 500
+
+    final_link = init_point or sandbox_init_point
+    print(f"LOG comprar_diaria: final_link={final_link}", flush=True)
+
+    return redirect(final_link)
+
+
+@app.route("/pendente/<int:projeto_id>")
+@login_required
+def pendente_page(projeto_id):
+    u = current_user()
+    p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
+    return render_template("pendente.html", projeto=p)
+
+
+@app.route("/status")
+@login_required
+def status():
+    u = current_user()
+    projeto_id = request.args.get("projeto_id", type=int)
+
+    if u.premium_ativo():
+        return jsonify({"paid": True, "premium": True})
+
+    if u.gratis_expira_em and u.gratis_expira_em > now_utc():
+        return jsonify({
+            "paid": True,
+            "premium": False,
+            "gratis": True,
+            "expires_at": u.gratis_expira_em.isoformat()
+        })
+
+    if not projeto_id:
+        return jsonify({"paid": False, "premium": False})
+
+    acesso = AcessoProjeto.query.filter_by(
+        user_id=u.id, projeto_id=projeto_id
+    ).order_by(AcessoProjeto.expires_at.desc()).first()
+
+    if acesso and acesso.expires_at > now_utc():
+        return jsonify({
+            "paid": True,
+            "premium": False,
+            "expires_at": acesso.expires_at.isoformat()
+        })
+
+    return jsonify({"paid": False, "premium": False})
+
+# =====================================================
+# DOWNLOAD
+# =====================================================
+
+@app.route("/projeto/<int:projeto_id>/download")
+@login_required
+def download_projeto(projeto_id):
+    u = current_user()
+    p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
+
+    if not u.premium_ativo():
+        gratis_ativo = u.gratis_expira_em and u.gratis_expira_em > now_utc()
+
+        acesso = AcessoProjeto.query.filter_by(
+            user_id=u.id, projeto_id=p.id
+        ).order_by(AcessoProjeto.expires_at.desc()).first()
+
+        acesso_pago_ativo = acesso and acesso.expires_at > now_utc()
+
+        if not gratis_ativo and not acesso_pago_ativo:
             return redirect(url_for("projeto_view", projeto_id=p.id))
-          
-        
-        # =====================================================
-        # PREMIUM
-        # =====================================================
-        
-        @app.route("/premium")
-        @login_required
-        def premium_page():
-            u = current_user()
-            _, premium_price = get_prices()
-            return render_template("premium.html", usuario=u, price_premium=premium_price)
-        
-        
-        @app.route("/premium/assinar", methods=["POST"])
-        @login_required
-        def premium_assinar():
-            u = current_user()
-        
-            if u.premium_ativo():
-                return jsonify({"erro": "Você já possui Premium ativo."}), 400
-        
-            _, premium_price = get_prices()
-        
-            url = "https://api.mercadopago.com/preapproval"
-            headers = {
-                "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
-                "Content-Type": "application/json"
-            }
-        
-            payload = {
-                "reason": "PromptSheet Premium - Acesso ilimitado",
-                "payer_email": u.email,
-                "auto_recurring": {
-                    "frequency": 1,
-                    "frequency_type": "months",
-                    "transaction_amount": float(premium_price),
-                    "currency_id": "BRL"
-                },
-                "back_url": f"{base_url()}/premium/retorno",
-                "external_reference": f"user:{u.id}"
-            }
-        
-            r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=30)
-        
-            print("MP preapproval status:", r.status_code)
-            print("MP preapproval body:", r.text)
-        
-            if r.status_code >= 400:
-                return jsonify({"erro": "Falha ao criar assinatura.", "detalhes": r.text}), 500
-        
-            resp = r.json()
-            init_point = resp.get("init_point")
-            sub_id = resp.get("id")
-        
-            if not init_point or not sub_id:
-                return jsonify({"erro": "Resposta inesperada do Mercado Pago.", "detalhes": resp}), 500
-        
-            u.subscription_id = sub_id
-            u.subscription_status = (resp.get("status") or "pending").lower()
-            db.session.commit()
-        
-            return jsonify({"init_point": init_point})
-        
-        
-        @app.route("/premium/retorno")
-        @login_required
-        def premium_retorno():
-            return redirect(url_for("app_home"))
-        
-        
-        # =====================================================
-        # AVULSO 24H
-        # =====================================================
-        
-        @app.route("/projeto/<int:projeto_id>/comprar_diaria", methods=["POST"])
-        @login_required
-        def comprar_diaria(projeto_id):
-            u = current_user()
-            p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
-        
-            if u.premium_ativo():
-                print("LOG comprar_diaria: usuário já é premium", flush=True)
-                return jsonify({"erro": "Você já é Premium."}), 400
-        
-            avulso_price, _ = get_prices()
-            external_reference = f"user:{u.id}|project:{p.id}|kind:daily"
-        
-            preference_data = {
-                "items": [
-                    {
-                        "id": f"project-{p.id}",
-                        "title": f"Acesso 24h - Projeto {p.nome}",
-                        "description": f"Acesso temporário ao projeto {p.nome}",
-                        "quantity": 1,
-                        "currency_id": "BRL",
-                        "unit_price": float(avulso_price)
-                    }
-                ],
-                "payer": {
-                    "email": u.email
-                },
-                "external_reference": external_reference,
-                "notification_url": f"{base_url()}/webhook",
-                "back_urls": {
-                    "success": f"{base_url()}/pendente/{p.id}",
-                    "failure": f"{base_url()}/pendente/{p.id}",
-                    "pending": f"{base_url()}/pendente/{p.id}",
-                },
-                "auto_return": "approved",
-                "binary_mode": False,
-                "statement_descriptor": "PROMPTSHEET"
-            }
-        
-            print("LOG comprar_diaria: iniciou", flush=True)
-            print(f"LOG comprar_diaria: user_id={u.id} projeto_id={p.id} email={u.email}", flush=True)
-            print(f"LOG comprar_diaria: preference_data={json.dumps(preference_data, ensure_ascii=False, default=str)}", flush=True)
-        
-            response = sdk.preference().create(preference_data)
-        
-            print(f"LOG comprar_diaria: response={json.dumps(response, ensure_ascii=False, default=str)}", flush=True)
-        
-            mp_resp = response.get("response", {})
-            init_point = mp_resp.get("init_point")
-            sandbox_init_point = mp_resp.get("sandbox_init_point")
-        
-            if not init_point and not sandbox_init_point:
-                print("LOG comprar_diaria: não gerou init_point", flush=True)
-                return jsonify({
-                    "erro": "Não foi possível gerar o link de pagamento.",
-                    "detalhes": response
-                }), 500
-        
-            final_link = init_point or sandbox_init_point
-            print(f"LOG comprar_diaria: final_link={final_link}", flush=True)
-        
-            return redirect(final_link)
-        
-        
-        @app.route("/pendente/<int:projeto_id>")
-        @login_required
-        def pendente_page(projeto_id):
-            u = current_user()
-            p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
-            return render_template("pendente.html", projeto=p)
-        
-        
-        @app.route("/status")
-        @login_required
-        def status():
-            u = current_user()
-            projeto_id = request.args.get("projeto_id", type=int)
-        
-            if u.premium_ativo():
-                return jsonify({"paid": True, "premium": True})
-        
-            if u.gratis_expira_em and u.gratis_expira_em > now_utc():
-                return jsonify({
-                    "paid": True,
-                    "premium": False,
-                    "gratis": True,
-                    "expires_at": u.gratis_expira_em.isoformat()
-                })
-        
-            if not projeto_id:
-                return jsonify({"paid": False, "premium": False})
-        
-            acesso = AcessoProjeto.query.filter_by(
-                user_id=u.id, projeto_id=projeto_id
-            ).order_by(AcessoProjeto.expires_at.desc()).first()
-        
-            if acesso and acesso.expires_at > now_utc():
-                return jsonify({
-                    "paid": True,
-                    "premium": False,
-                    "expires_at": acesso.expires_at.isoformat()
-                })
-        
-            return jsonify({"paid": False, "premium": False})
-        
-        # =====================================================
-        # DOWNLOAD
-        # =====================================================
-        
-        @app.route("/projeto/<int:projeto_id>/download")
-        @login_required
-        def download_projeto(projeto_id):
-            u = current_user()
-            p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
-        
-            if not u.premium_ativo():
-                gratis_ativo = u.gratis_expira_em and u.gratis_expira_em > now_utc()
-        
-                acesso = AcessoProjeto.query.filter_by(
-                    user_id=u.id, projeto_id=p.id
-                ).order_by(AcessoProjeto.expires_at.desc()).first()
-        
-                acesso_pago_ativo = acesso and acesso.expires_at > now_utc()
-        
-                if not gratis_ativo and not acesso_pago_ativo:
-                    return redirect(url_for("projeto_view", projeto_id=p.id))
-        
-            # geração da planilha continua aqui normalmente
-            wb = gerar_planilha(p.prompt or "")
-            
-            output = io.BytesIO()
-            wb.save(output)
-            output.seek(0)
-        
-            return send_file(
-                output,
-                as_attachment=True,
-                download_name=f"{p.nome}.xlsx",
-                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        
-        # =====================================================
-        # WEBHOOK
-        # =====================================================
-        
-        def parse_webhook_event():
-            data = request.get_json(silent=True) or {}
-        
-            if isinstance(data, dict) and data.get("type") and isinstance(data.get("data"), dict) and data["data"].get("id"):
-                return data.get("type"), str(data["data"]["id"])
-        
-            t = request.args.get("type")
-            did = request.args.get("data.id")
-            if t and did:
-                return t, str(did)
-        
-            topic = request.args.get("topic")
-            _id = request.args.get("id")
-            if topic and _id:
-                return topic, str(_id)
-        
-            return None, None
-        
-        
-        def handle_payment(payment_id: str):
-            pay_resp = sdk.payment().get(payment_id)
-            payment = pay_resp.get("response", {})
-            status = (payment.get("status") or "").lower()
-        
-            print("MP payment fetched:", json.dumps(payment, ensure_ascii=False, default=str))
-        
-            if status != "approved":
-                return
-        
-            external_reference = payment.get("external_reference") or ""
-        
-            if "kind:daily" in external_reference and "project:" in external_reference and "user:" in external_reference:
-                try:
-                    parts = external_reference.split("|")
-                    uid = int(parts[0].split(":")[1])
-                    pid = int(parts[1].split(":")[1])
-                except Exception:
-                    return
-        
-                user = db.session.get(Usuario, uid)
-                proj = db.session.get(Projeto, pid)
-                if not user or not proj or proj.user_id != user.id:
-                    return
-        
-                existing_same_payment = AcessoProjeto.query.filter_by(
-                    user_id=user.id,
-                    projeto_id=proj.id,
-                    payment_id=str(payment_id)
-                ).first()
-                if existing_same_payment:
-                    return
-        
-                expires = now_utc() + timedelta(hours=24)
-        
-                acesso = AcessoProjeto.query.filter_by(
-                    user_id=user.id, projeto_id=proj.id
-                ).order_by(AcessoProjeto.expires_at.desc()).first()
-        
-                if acesso and acesso.expires_at > now_utc():
-                    expires = acesso.expires_at + timedelta(hours=24)
-        
-                novo = AcessoProjeto(
-                    user_id=user.id,
-                    projeto_id=proj.id,
-                    expires_at=expires,
-                    payment_id=str(payment_id)
-                )
-                db.session.add(novo)
-                db.session.commit()
-        
-        
-        def handle_preapproval(preapproval_id: str):
-            url = f"https://api.mercadopago.com/preapproval/{preapproval_id}"
-            headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
-            r = requests.get(url, headers=headers, timeout=30)
-        
-            print("MP preapproval fetch status:", r.status_code)
-            print("MP preapproval fetch body:", r.text)
-        
-            if r.status_code >= 400:
-                return
-        
-            sub = r.json()
-            status = (sub.get("status") or "").lower()
-            ext = sub.get("external_reference") or ""
-        
+
+    wb = generate_workbook_from_prompt(p.nome, p.prompt or "")
+
+    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    wb.save(temp.name)
+
+    download_name = f"{sanitize_project_filename(p.nome)}.xlsx"
+    return send_file(temp.name, as_attachment=True, download_name=download_name)
+
+
+# =====================================================
+# WEBHOOK
+# =====================================================
+
+def parse_webhook_event():
+    data = request.get_json(silent=True) or {}
+
+    if isinstance(data, dict) and data.get("type") and isinstance(data.get("data"), dict) and data["data"].get("id"):
+        return data.get("type"), str(data["data"]["id"])
+
+    t = request.args.get("type")
+    did = request.args.get("data.id")
+    if t and did:
+        return t, str(did)
+
+    topic = request.args.get("topic")
+    _id = request.args.get("id")
+    if topic and _id:
+        return topic, str(_id)
+
+    return None, None
+
+
+def handle_payment(payment_id: str):
+    pay_resp = sdk.payment().get(payment_id)
+    payment = pay_resp.get("response", {})
+    status = (payment.get("status") or "").lower()
+
+    print("MP payment fetched:", json.dumps(payment, ensure_ascii=False, default=str))
+
+    if status != "approved":
+        return
+
+    external_reference = payment.get("external_reference") or ""
+
+    if "kind:daily" in external_reference and "project:" in external_reference and "user:" in external_reference:
+        try:
+            parts = external_reference.split("|")
+            uid = int(parts[0].split(":")[1])
+            pid = int(parts[1].split(":")[1])
+        except Exception:
+            return
+
+        user = db.session.get(Usuario, uid)
+        proj = db.session.get(Projeto, pid)
+        if not user or not proj or proj.user_id != user.id:
+            return
+
+        existing_same_payment = AcessoProjeto.query.filter_by(
+            user_id=user.id,
+            projeto_id=proj.id,
+            payment_id=str(payment_id)
+        ).first()
+        if existing_same_payment:
+            return
+
+        expires = now_utc() + timedelta(hours=24)
+
+        acesso = AcessoProjeto.query.filter_by(
+            user_id=user.id, projeto_id=proj.id
+        ).order_by(AcessoProjeto.expires_at.desc()).first()
+
+        if acesso and acesso.expires_at > now_utc():
+            expires = acesso.expires_at + timedelta(hours=24)
+
+        novo = AcessoProjeto(
+            user_id=user.id,
+            projeto_id=proj.id,
+            expires_at=expires,
+            payment_id=str(payment_id)
+        )
+        db.session.add(novo)
+        db.session.commit()
+
+
+def handle_preapproval(preapproval_id: str):
+    url = f"https://api.mercadopago.com/preapproval/{preapproval_id}"
+    headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
+    r = requests.get(url, headers=headers, timeout=30)
+
+    print("MP preapproval fetch status:", r.status_code)
+    print("MP preapproval fetch body:", r.text)
+
+    if r.status_code >= 400:
+        return
+
+    sub = r.json()
+    status = (sub.get("status") or "").lower()
+    ext = sub.get("external_reference") or ""
+
+    uid = None
+    if ext.startswith("user:"):
+        try:
+            uid = int(ext.split(":")[1])
+        except Exception:
             uid = None
-            if ext.startswith("user:"):
-                try:
-                    uid = int(ext.split(":")[1])
-                except Exception:
-                    uid = None
-        
-            user = db.session.get(Usuario, uid) if uid else None
-            if not user:
-                payer_email = (sub.get("payer_email") or "").strip().lower()
-                if payer_email:
-                    user = Usuario.query.filter_by(email=payer_email).first()
-        
-            if not user:
-                return
-        
-            user.subscription_id = preapproval_id
-            user.subscription_status = status or "unknown"
-            db.session.commit()
-        
-        
-        @app.route("/webhook", methods=["POST", "GET"])
-        def webhook():
-            try:
-                event_type, event_id = parse_webhook_event()
-        
-                print("Webhook recebido:", event_type, event_id)
-        
-                if not event_type or not event_id:
-                    return jsonify({"status": "ignored"}), 200
-        
-                if event_type == "payment":
-                    handle_payment(event_id)
-                    return jsonify({"status": "ok"}), 200
-        
-                if event_type in ("preapproval",):
-                    handle_preapproval(event_id)
-                    return jsonify({"status": "ok"}), 200
-        
-                return jsonify({"status": "ignored"}), 200
-        
-            except Exception as e:
-                print("Erro webhook:", e)
-                db.session.rollback()
-                return jsonify({"erro": "erro interno"}), 500
-        
-        
-        # =====================================================
-        # ADMIN
-        # =====================================================
-        
-        @app.route("/admin")
-        @login_required
-        @admin_required
-        def admin_home():
-            cfg = get_config()
-            users_count = Usuario.query.count()
-            projects_count = Projeto.query.count()
-            return render_template(
-                "admin.html",
-                config=cfg,
-                users_count=users_count,
-                projects_count=projects_count,
-                admin_email=ADMIN_EMAIL
-            )
-        
-        
-        @app.route("/admin/users")
-        @login_required
-        @admin_required
-        def admin_users():
-            users = Usuario.query.order_by(Usuario.created_at.desc()).all()
-            return render_template("admin_users.html", users=users, admin_email=ADMIN_EMAIL)
-        
-        
-        @app.route("/admin/config", methods=["POST"])
-        @login_required
-        @admin_required
-        def admin_save_config():
-            cfg = get_config()
-        
-            av = to_decimal(request.form.get("price_avulso_24h"), Decimal(str(cfg.price_avulso_24h)))
-            pr = to_decimal(request.form.get("price_premium_mensal"), Decimal(str(cfg.price_premium_mensal)))
-        
-            cfg.price_avulso_24h = av.quantize(Decimal("0.01"))
-            cfg.price_premium_mensal = pr.quantize(Decimal("0.01"))
-            db.session.commit()
-        
-            return redirect(url_for("admin_home"))
-        
-        
-        @app.route("/admin/grant_premium", methods=["POST"])
-        @login_required
-        @admin_required
-        def admin_grant_premium():
-            email = (request.form.get("email") or "").strip().lower()
-            days = request.form.get("days", type=int)
-        
-            if not email or not days or days <= 0:
-                return redirect(url_for("admin_home"))
-        
-            u = Usuario.query.filter_by(email=email).first()
-            if not u:
-                return redirect(url_for("admin_home"))
-        
-            base_dt = u.free_premium_until if u.free_premium_until and u.free_premium_until > now_utc() else now_utc()
-            u.free_premium_until = base_dt + timedelta(days=days)
-            db.session.commit()
-        
-            return redirect(url_for("admin_users"))
-        
-        
-        # =====================================================
-        # RUN
-        # =====================================================
-        
-        if __name__ == "__main__":
-            port = int(os.environ.get("PORT", 10000))
-            app.run(host="0.0.0.0", port=port)
+
+    user = db.session.get(Usuario, uid) if uid else None
+    if not user:
+        payer_email = (sub.get("payer_email") or "").strip().lower()
+        if payer_email:
+            user = Usuario.query.filter_by(email=payer_email).first()
+
+    if not user:
+        return
+
+    user.subscription_id = preapproval_id
+    user.subscription_status = status or "unknown"
+    db.session.commit()
+
+
+@app.route("/webhook", methods=["POST", "GET"])
+def webhook():
+    try:
+        event_type, event_id = parse_webhook_event()
+
+        print("Webhook recebido:", event_type, event_id)
+
+        if not event_type or not event_id:
+            return jsonify({"status": "ignored"}), 200
+
+        if event_type == "payment":
+            handle_payment(event_id)
+            return jsonify({"status": "ok"}), 200
+
+        if event_type in ("preapproval",):
+            handle_preapproval(event_id)
+            return jsonify({"status": "ok"}), 200
+
+        return jsonify({"status": "ignored"}), 200
+
+    except Exception as e:
+        print("Erro webhook:", e)
+        db.session.rollback()
+        return jsonify({"erro": "erro interno"}), 500
+
+
+# =====================================================
+# ADMIN
+# =====================================================
+
+@app.route("/admin")
+@login_required
+@admin_required
+def admin_home():
+    cfg = get_config()
+    users_count = Usuario.query.count()
+    projects_count = Projeto.query.count()
+    return render_template(
+        "admin.html",
+        config=cfg,
+        users_count=users_count,
+        projects_count=projects_count,
+        admin_email=ADMIN_EMAIL
+    )
+
+
+@app.route("/admin/users")
+@login_required
+@admin_required
+def admin_users():
+    users = Usuario.query.order_by(Usuario.created_at.desc()).all()
+    return render_template("admin_users.html", users=users, admin_email=ADMIN_EMAIL)
+
+
+@app.route("/admin/config", methods=["POST"])
+@login_required
+@admin_required
+def admin_save_config():
+    cfg = get_config()
+
+    av = to_decimal(request.form.get("price_avulso_24h"), Decimal(str(cfg.price_avulso_24h)))
+    pr = to_decimal(request.form.get("price_premium_mensal"), Decimal(str(cfg.price_premium_mensal)))
+
+    cfg.price_avulso_24h = av.quantize(Decimal("0.01"))
+    cfg.price_premium_mensal = pr.quantize(Decimal("0.01"))
+    db.session.commit()
+
+    return redirect(url_for("admin_home"))
+
+
+@app.route("/admin/grant_premium", methods=["POST"])
+@login_required
+@admin_required
+def admin_grant_premium():
+    email = (request.form.get("email") or "").strip().lower()
+    days = request.form.get("days", type=int)
+
+    if not email or not days or days <= 0:
+        return redirect(url_for("admin_home"))
+
+    u = Usuario.query.filter_by(email=email).first()
+    if not u:
+        return redirect(url_for("admin_home"))
+
+    base_dt = u.free_premium_until if u.free_premium_until and u.free_premium_until > now_utc() else now_utc()
+    u.free_premium_until = base_dt + timedelta(days=days)
+    db.session.commit()
+
+    return redirect(url_for("admin_users"))
+
+
+# =====================================================
+# RUN
+# =====================================================
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
