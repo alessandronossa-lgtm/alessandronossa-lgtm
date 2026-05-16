@@ -1196,10 +1196,10 @@ def download_projeto(projeto_id):
     u = current_user()
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
-   if not u.premium_ativo():
+if not u.premium_ativo():
 
     # 👉 SE NUNCA USOU GRÁTIS → LIBERA AGORA
-    if not u.usou_gratis:
+if not u.usou_gratis:
         u.usou_gratis = True
         u.gratis_expira_em = now_utc() + timedelta(hours=1)
         db.session.commit()
@@ -1212,7 +1212,7 @@ def download_projeto(projeto_id):
 
     acesso_pago_ativo = acesso and acesso.expires_at > now_utc()
 
-    if not gratis_ativo and not acesso_pago_ativo:
+if not gratis_ativo and not acesso_pago_ativo:
         return redirect(url_for("projeto_view", projeto_id=p.id))
 
     wb = generate_workbook_from_prompt(p.nome, p.prompt or "")
