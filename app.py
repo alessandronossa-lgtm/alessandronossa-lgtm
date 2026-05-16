@@ -1,27 +1,24 @@
-        import os
-        import re
-        import json
-        import tempfile
-        import unicodedata
-        from decimal import Decimal, InvalidOperation
-        from datetime import datetime, timedelta, timezone
-        from functools import wraps
-        
-        from flask import (
+import os
+import re
+import json
+import tempfile
+import unicodedata
+from decimal import Decimal, InvalidOperation
+from datetime import datetime, timedelta, timezone
+from functools import wraps
+from flask import (
             Flask, render_template, request, redirect, jsonify,
             session, url_for, send_file, abort
         )
-        
-        import mercadopago
-        import requests
-        from flask_sqlalchemy import SQLAlchemy
-        from werkzeug.security import generate_password_hash, check_password_hash
-        from werkzeug.utils import secure_filename
-        
-        from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
-        from openpyxl.utils import get_column_letter
-        from openpyxl.drawing.image import Image
+import mercadopago
+import requests
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image
         
         
         # =====================================================
