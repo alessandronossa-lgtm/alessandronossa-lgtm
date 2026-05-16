@@ -25,7 +25,7 @@ from openpyxl.drawing.image import Image
         # APP CONFIG
         # =====================================================
         
-        app = Flask(__name__)
+app = Flask(__name__)
         
         SECRET_KEY = os.getenv("SECRET_KEY")
         if not SECRET_KEY:
@@ -39,13 +39,13 @@ from openpyxl.drawing.image import Image
         if DATABASE_URL.startswith("postgres://"):
             DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
         
-        app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
-        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
         
-        db = SQLAlchemy(app)
+db = SQLAlchemy(app)
         
-        MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
+MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
         if not MP_ACCESS_TOKEN:
             raise Exception("MP_ACCESS_TOKEN não configurado.")
         sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
@@ -56,8 +56,7 @@ from openpyxl.drawing.image import Image
         def now_utc():
             return datetime.now(timezone.utc)
         
-        
-        
+              
         def base_url():
             env = os.getenv("BASE_URL")
             if env and env.strip():
