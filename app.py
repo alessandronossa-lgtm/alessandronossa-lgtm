@@ -186,10 +186,7 @@ def login_required(fn):
 
 
 if not session.get("user_id"):
-    session["nome_projeto_temp"] = nome
-    return redirect(url_for("register"))
-
-
+    
 def admin_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
