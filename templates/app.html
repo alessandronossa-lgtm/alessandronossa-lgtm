@@ -2,16 +2,128 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>PromptSheet</title>
+  <title>Criar planilha | PromptSheet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #eef7f1 100%);
+      color: #111827;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 18px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 620px;
+      background: white;
+      border-radius: 28px;
+      padding: 34px;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.10);
+    }
+
+    .brand {
+      font-weight: 900;
+      font-size: 22px;
+      margin-bottom: 28px;
+    }
+
+    .brand span {
+      color: #217346;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 36px;
+      line-height: 1.1;
+    }
+
+    p {
+      color: #4b5563;
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    .free {
+      background: #ecfdf5;
+      border: 1px solid #86efac;
+      color: #166534;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: bold;
+      margin: 18px 0;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid #cbd5e1;
+      font-size: 16px;
+      margin-top: 12px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      background: #217346;
+      color: white;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(33, 115, 70, 0.25);
+    }
+
+    .hint {
+      margin-top: 18px;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    @media (max-width: 700px) {
+      .card { padding: 24px; border-radius: 22px; }
+      h1 { font-size: 30px; }
+    }
+  </style>
 </head>
+
 <body>
+  <div class="page">
+    <div class="card">
+      <div class="brand">Prompt<span>Sheet</span></div>
 
-  <h1>Criar nova planilha</h1>
+      <h1>Crie sua primeira planilha</h1>
 
-  <form method="POST">
-    <input name="nome" placeholder="Ex: Controle de vendas">
-    <button type="submit">Criar planilha</button>
-  </form>
+      <p>
+        Dê um nome para sua planilha. Depois você vai descrever o que precisa e o PromptSheet gera o Excel para você.
+      </p>
 
+      <div class="free">
+        🎁 Sua primeira planilha é grátis por 1 hora após gerar.
+      </div>
+
+      <form method="POST">
+        <input name="nome" placeholder="Ex: Controle de vendas" required>
+        <button type="submit">Continuar</button>
+      </form>
+
+      <div class="hint">
+        Exemplos: Controle de vendas, Controle financeiro, Estoque, Cadastro de clientes.
+      </div>
+    </div>
+  </div>
 </body>
 </html>
