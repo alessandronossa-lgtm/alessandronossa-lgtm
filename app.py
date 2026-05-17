@@ -1192,11 +1192,16 @@ def download_projeto(projeto_id):
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
     if not u.premium_ativo():
-      
+        if not u.usou_gratis:
+            u.usou_gratis = True
+            u.gratis_expira_em = now_utc() + timedelta(hours=1)
             db.session.commit()
 
-    acesso = AcessoProjeto.query.filter_by(
-            user_id=u.id, projeto_id=p.id
+        gratis_ativo = u.gratis_expira_em and u.gratis_expira_em > now_utc()
+
+        acesso = AcessoProjeto.query.filter_by(
+            user_id=u.id,
+            projeto_id=p.id
         ).order_by(AcessoProjeto.expires_at.desc()).first()
 
         acesso_pago_ativo = acesso and acesso.expires_at > now_utc()
@@ -1210,7 +1215,6 @@ def download_projeto(projeto_id):
 
     download_name = f"{sanitize_project_filename(p.nome)}.xlsx"
     return send_file(temp.name, as_attachment=True, download_name=download_name)
-
 # =====================================================
 # WEBHOOK
 # =====================================================
