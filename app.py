@@ -1195,9 +1195,7 @@ def download_projeto(projeto_id):
       
             db.session.commit()
 
-        gratis_ativo = u.gratis_expira_em and u.gratis_expira_em > now_utc()
-
-        acesso = AcessoProjeto.query.filter_by(
+    acesso = AcessoProjeto.query.filter_by(
             user_id=u.id, projeto_id=p.id
         ).order_by(AcessoProjeto.expires_at.desc()).first()
 
