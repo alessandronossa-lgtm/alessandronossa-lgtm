@@ -1,92 +1,17 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>PromptSheet</title>
+  <meta charset="UTF-8">
+  <title>PromptSheet</title>
 </head>
 <body>
 
-<h1>Criar nova planilha</h1>
+  <h1>Criar nova planilha</h1>
 
-<form method="POST">
-  <input name="nome" placeholder="Ex: Controle de vendas">
-  <button type="submit">Criar planilha</button>
-</form>
-
-</body>
-</html>
-
-<style>
-body {
-  font-family: Arial;
-  background: #f4f7fb;
-}
-
-.container {
-  max-width: 700px;
-  margin: 60px auto;
-}
-
-.card {
-  background: white;
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-}
-
-textarea {
-  width: 100%;
-  height: 150px;
-  margin-top: 15px;
-  padding: 15px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-}
-
-button {
-  margin-top: 20px;
-  width: 100%;
-  padding: 15px;
-  background: #217346;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-weight: bold;
-}
-
-.gratis {
-  background: #ecfdf5;
-  border: 1px solid #86efac;
-  padding: 10px;
-  border-radius: 10px;
-  margin-bottom: 15px;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-
-  <div class="card">
-
-    <h1>{{ projeto.nome }}</h1>
-
-    {% if not usuario.usou_gratis %}
-      <div class="gratis">
-        🎁 Sua primeira planilha será grátis por 1 hora
-      </div>
-    {% endif %}
-
-    <form method="POST" action="/projeto/{{ projeto.id }}/atualizar">
-      <textarea name="prompt">{{ projeto.prompt }}</textarea>
-
-      <button>Gerar minha planilha</button>
-    </form>
-
-  </div>
-
-</div>
+  <form method="POST">
+    <input name="nome" placeholder="Ex: Controle de vendas">
+    <button type="submit">Criar planilha</button>
+  </form>
 
 </body>
 </html>
