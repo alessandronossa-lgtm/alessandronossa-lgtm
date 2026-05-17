@@ -2,149 +2,134 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>{{ projeto.nome }} - PromptSheet</title>
+  <title>{{ projeto.nome }} | PromptSheet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-
-.preview-card {
-  margin-top: 20px;
-}
-
-.preview-table {
-  overflow-x: auto;
-  margin-top: 10px;
-}
-
-.preview-table table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.preview-table th {
-  background: #1f4e78;
-  color: white;
-  padding: 8px;
-  font-size: 14px;
-}
-
-.preview-table td {
-  padding: 8px;
-  border: 1px solid #ddd;
-  font-size: 13px;
-}
-
-    
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
-      background: #f4f7fb;
+      background: linear-gradient(135deg, #f8fafc 0%, #eef7f1 100%);
       color: #111827;
     }
 
-    .topbar {
-      background: #217346;
-      color: white;
-      padding: 18px 28px;
+    .page {
+      min-height: 100vh;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .topbar a {
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .container {
-      max-width: 920px;
-      margin: 34px auto;
-      padding: 0 18px;
+      justify-content: center;
+      padding: 34px 18px;
     }
 
     .card {
+      width: 100%;
+      max-width: 760px;
       background: white;
-      border-radius: 18px;
-      padding: 28px;
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-      margin-bottom: 22px;
+      border-radius: 28px;
+      padding: 34px;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.10);
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 26px;
+    }
+
+    .brand {
+      font-weight: 900;
+      font-size: 22px;
+    }
+
+    .brand span { color: #217346; }
+
+    .back {
+      color: #217346;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 14px;
     }
 
     h1 {
       margin: 0 0 10px;
-      font-size: 32px;
-    }
-
-    h2 {
-      margin: 0 0 14px;
-      font-size: 24px;
+      font-size: 36px;
+      line-height: 1.1;
     }
 
     p {
       color: #4b5563;
+      font-size: 17px;
       line-height: 1.5;
     }
 
-    .badge {
-      display: inline-block;
+    .free {
       background: #ecfdf5;
+      border: 1px solid #86efac;
       color: #166534;
-      border: 1px solid #bbf7d0;
-      padding: 10px 14px;
-      border-radius: 999px;
-      font-weight: bold;
-      margin-top: 10px;
+      padding: 14px;
+      border-radius: 16px;
+      font-weight: 800;
+      margin: 18px 0;
+    }
+
+    .paid {
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      color: #9a3412;
+      padding: 14px;
+      border-radius: 16px;
+      font-weight: 800;
+      margin: 18px 0;
     }
 
     textarea {
       width: 100%;
-      min-height: 160px;
+      min-height: 190px;
       padding: 16px;
+      border-radius: 16px;
       border: 1px solid #cbd5e1;
-      border-radius: 14px;
       font-size: 16px;
       line-height: 1.5;
       resize: vertical;
-      margin-top: 12px;
+      margin-top: 14px;
     }
 
     .hint {
       background: #f8fafc;
       border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 16px;
-      margin: 16px 0;
+      border-radius: 16px;
+      padding: 14px;
+      margin: 14px 0;
       color: #374151;
-    }
-
-    .hint strong {
-      color: #217346;
+      font-size: 14px;
     }
 
     .actions {
-      display: flex;
+      display: grid;
       gap: 12px;
-      flex-wrap: wrap;
       margin-top: 18px;
     }
 
     button, .btn {
+      width: 100%;
       border: none;
-      border-radius: 12px;
-      padding: 14px 20px;
-      font-weight: bold;
+      border-radius: 16px;
+      padding: 16px 20px;
+      font-size: 16px;
+      font-weight: 900;
       cursor: pointer;
       text-decoration: none;
-      display: inline-block;
-      font-size: 15px;
+      text-align: center;
+      display: block;
     }
 
     .btn-primary {
       background: #217346;
       color: white;
+      box-shadow: 0 10px 24px rgba(33, 115, 70, 0.25);
     }
 
     .btn-secondary {
@@ -153,239 +138,73 @@
       border: 1px solid #cbd5e1;
     }
 
-    .pay-card {
-      background: #fff7ed;
-      border: 1px solid #fdba74;
-    }
-
-    .success-card {
-      background: #ecfdf5;
-      border: 1px solid #86efac;
-    }
-
-    .price {
-      font-size: 34px;
-      font-weight: bold;
-      margin: 8px 0;
-    }
-
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-top: 18px;
-    }
-
-    .step {
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 14px;
-      text-align: center;
-      font-size: 14px;
-      font-weight: bold;
-    }
-
-    @media (max-width: 720px) {
-      .steps { grid-template-columns: 1fr; }
-      h1 { font-size: 26px; }
+    @media (max-width: 700px) {
+      .card { padding: 24px; border-radius: 22px; }
+      h1 { font-size: 30px; }
+      .top { align-items: flex-start; }
     }
   </style>
 </head>
 
 <body>
+  <div class="page">
+    <main class="card">
 
-  <div class="topbar">
-    <div><strong>PromptSheet</strong></div>
-    <a href="/app">← Voltar</a>
-  </div>
+      <div class="top">
+        <div class="brand">Prompt<span>Sheet</span></div>
+        <a class="back" href="/app">← Voltar</a>
+      </div>
 
-  <div class="container">
-
-    <div class="card">
       <h1>{{ projeto.nome }}</h1>
-      <p>
-        Sua planilha já foi criada com base no texto abaixo.
-        Você pode ajustar a descrição antes de gerar o arquivo final.
-      </p>
-
-      <div class="steps">
-        <div class="step">1️⃣ Descreva</div>
-        <div class="step">2️⃣ Libere por R$1</div>
-        <div class="step">3️⃣ Baixe o Excel</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Descreva sua planilha</h2>
 
       <p>
-        Escreva como se estivesse explicando para uma pessoa.
-        <strong>Não precisa saber Excel.</strong>
+        Descreva a planilha como se estivesse explicando para uma pessoa.
+        O PromptSheet transforma sua ideia em um arquivo Excel pronto para baixar.
       </p>
 
-      <div class="hint">
-        <strong>Exemplo:</strong><br>
-        Quero um controle de vendas com produto, quantidade, valor unitário, valor total e comissão de 10%.
-      </div>
+      {% if not usuario.usou_gratis %}
+        <div class="free">
+          🎁 Sua primeira planilha é grátis. O prazo de 1 hora começa quando você gerar o Excel.
+        </div>
+      {% elif premium or acesso_ativo %}
+        <div class="free">
+          ✅ Acesso liberado. Você já pode gerar e baixar esta planilha.
+        </div>
+      {% else %}
+        <div class="paid">
+          🔒 Para gerar novamente, libere este projeto por 24h por R$1.
+        </div>
+      {% endif %}
 
       <form method="POST" action="/projeto/{{ projeto.id }}/atualizar">
-        <textarea name="prompt">{{ projeto.prompt }}</textarea>
+        <textarea name="prompt" placeholder="Ex: Quero um controle de vendas com produto, quantidade, valor unitário, valor total e comissão de 10%.">{{ projeto.prompt }}</textarea>
 
-
-
-
-
-
-<div class="hint">
-  <strong>Outros exemplos que funcionam bem:</strong><br><br>
-
-  📊 Controle de estoque com produto, entrada, saída e saldo<br>
-  🚚 Controle de entregas com cliente, endereço e status<br>
-  💰 Controle financeiro com data, descrição, entrada, saída e saldo<br>
-  👥 Cadastro de clientes com nome, telefone e e-mail
-</div>
-
-
-<div class="examples">
-  <button type="button" onclick="setPrompt('Controle de vendas com produto, quantidade e valor')">📊 Vendas</button>
-  <button type="button" onclick="setPrompt('Controle financeiro com entrada e saída')">💰 Financeiro</button>
-  <button type="button" onclick="setPrompt('Cadastro de clientes com nome e telefone')">👥 Clientes</button>
-</div>
-
-<script>
-function setPrompt(text) {
-  document.querySelector("textarea").value = text;
-}
-</script>
-
-
-        
+        <div class="hint">
+          Exemplos: controle de vendas, controle financeiro, estoque, cadastro de clientes, entregas.
+        </div>
 
         <div class="actions">
-          <button class="btn-primary" type="submit">
-            Atualizar prévia
-          </button>
-
-          <a class="btn btn-secondary" href="/app">
-            Voltar para projetos
-          </a>
+          <button class="btn-primary" type="submit">Salvar descrição</button>
         </div>
       </form>
-    </div>
 
-
-
-
-    <div class="card preview-card">
-  <h3>Prévia da sua planilha 👇</h3>
-
-  <div class="preview-table">
-    <table>
-      <thead>
-        <tr>
-<th style="width:40%;">Produto</th>
-<th style="width:15%;">Quantidade</th>
-<th style="width:20%;">Valor Unitário</th>
-<th style="width:15%;">Valor Total</th>
-<th style="width:10%;">Comissão</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Produto A</td>
-          <td>2</td>
-          <td>R$ 35,00</td>
-          <td>R$ 70,00</td>
-          <td>R$ 7,00</td>
-        </tr>
-        <tr>
-          <td>Produto B</td>
-          <td>3</td>
-          <td>R$ 20,00</td>
-          <td>R$ 60,00</td>
-          <td>R$ 6,00</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <p style="font-size:13px;color:#6b7280;margin-top:10px;">
-    Esta é uma prévia ilustrativa. A planilha final será gerada com base no seu texto.
-  </p>
-</div>
-
-   
-
-   {% if premium or acesso_ativo or gratis_ativo %}
-
-{% if gratis_ativo %}
-  <div style="
-    background:#ecfdf5;
-    border:1px solid #86efac;
-    padding:14px;
-    border-radius:12px;
-    margin-bottom:15px;
-    font-weight:bold;
-    color:#166534;
-  ">
-    🎁 Você está usando sua planilha grátis (1 hora disponível)
-  </div>
-{% endif %}
-
-
-    
-
-      <div class="card success-card">
-        <h2>Pronto para gerar 😄</h2>
-        <p>
-          Seu acesso está liberado. Agora você já pode gerar e baixar sua planilha em Excel.
-        </p>
-
-        <div class="actions">
+      <div class="actions">
+        {% if not usuario.usou_gratis or premium or acesso_ativo %}
           <a class="btn btn-primary" href="/projeto/{{ projeto.id }}/download">
-            Gerar e baixar minha planilha
+            Gerar e baixar Excel
           </a>
+        {% else %}
+          <form method="POST" action="/projeto/{{ projeto.id }}/comprar_diaria" target="_blank">
+            <button class="btn-primary" type="submit">
+              Liberar por R$1 e baixar
+            </button>
+          </form>
+        {% endif %}
 
-          <a class="btn btn-secondary" href="/app">
-            Voltar para projetos
-          </a>
-        </div>
+        <a class="btn btn-secondary" href="/app">Criar outra planilha</a>
       </div>
 
-    {% else %}
-
-
-<div class="card pay-card">
-  <h2>Sua planilha já está pronta 😄</h2>
-
-  <p>
-  Clique abaixo para gerar e baixar sua planilha agora.
-</p>
-  
- 
-
-  <p style="font-weight:bold;">
-  Teste por 24h sem compromisso
-  </p>
-
-  <div class="price">R$ 1,00</div>
-
-  <p style="margin-top:10px; color:#555;">
-    Pagamento rápido via Pix ou cartão ✔️
-  </p>
-
-  <form method="POST" action="/projeto/{{ projeto.id }}/comprar_diaria" target="_blank">
-    <button class="btn-primary" type="submit">
-      Gerar minha planilha agora (R$1)
-    </button>
-  </form>
-</div>
-
-    
-    {% endif %}
-
+    </main>
   </div>
-
 </body>
 </html>
