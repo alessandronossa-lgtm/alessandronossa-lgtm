@@ -183,10 +183,7 @@ def login_required(fn):
             return redirect(url_for("login"))
         return fn(*args, **kwargs)
     return wrapper
-
-
-if not session.get("user_id"):
-    
+   
 def admin_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
