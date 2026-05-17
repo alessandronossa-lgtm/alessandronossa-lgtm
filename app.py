@@ -185,6 +185,11 @@ def login_required(fn):
     return wrapper
 
 
+if not session.get("user_id"):
+    session["nome_projeto_temp"] = nome
+    return redirect(url_for("register"))
+
+
 def admin_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -925,8 +930,6 @@ def index():
     if u:
         return redirect(url_for("app_home"))
     return render_template("index.html", usuario=u)
-
-
 @app.route("/app", methods=["GET", "POST"])
 @login_required
 def app_home():
@@ -945,6 +948,7 @@ def app_home():
         return redirect(url_for("projeto_view", projeto_id=p.id))
 
     return render_template("app.html", usuario=u)
+
 @app.route("/projeto/<int:projeto_id>")
 @login_required
 def projeto_view(projeto_id):
@@ -1188,9 +1192,7 @@ def download_projeto(projeto_id):
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
     if not u.premium_ativo():
-        if not u.usou_gratis:
-            u.usou_gratis = True
-            u.gratis_expira_em = now_utc() + timedelta(hours=1)
+      
             db.session.commit()
 
         gratis_ativo = u.gratis_expira_em and u.gratis_expira_em > now_utc()
