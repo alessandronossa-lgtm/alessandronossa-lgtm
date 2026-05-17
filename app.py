@@ -1196,33 +1196,29 @@ def download_projeto(projeto_id):
     u = current_user()
     p = Projeto.query.filter_by(id=projeto_id, user_id=u.id).first_or_404()
 
-if not u.premium_ativo():
+    if not u.premium_ativo():
+        if not u.usou_gratis:
+            u.usou_gratis = True
+            u.gratis_expira_em = now_utc() + timedelta(hours=1)
+            db.session.commit()
 
-    # 👉 SE NUNCA USOU GRÁTIS → LIBERA AGORA
-if not u.usou_gratis:
-        u.usou_gratis = True
-        u.gratis_expira_em = now_utc() + timedelta(hours=1)
-        db.session.commit()
+        gratis_ativo = u.gratis_expira_em and u.gratis_expira_em > now_utc()
 
-    gratis_ativo = u.gratis_expira_em and u.gratis_expira_em > now_utc()
+        acesso = AcessoProjeto.query.filter_by(
+            user_id=u.id, projeto_id=p.id
+        ).order_by(AcessoProjeto.expires_at.desc()).first()
 
-    acesso = AcessoProjeto.query.filter_by(
-        user_id=u.id, projeto_id=p.id
-    ).order_by(AcessoProjeto.expires_at.desc()).first()
+        acesso_pago_ativo = acesso and acesso.expires_at > now_utc()
 
-    acesso_pago_ativo = acesso and acesso.expires_at > now_utc()
-
-if not gratis_ativo and not acesso_pago_ativo:
-        return redirect(url_for("projeto_view", projeto_id=p.id))
+        if not gratis_ativo and not acesso_pago_ativo:
+            return redirect(url_for("projeto_view", projeto_id=p.id))
 
     wb = generate_workbook_from_prompt(p.nome, p.prompt or "")
-
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
     wb.save(temp.name)
 
     download_name = f"{sanitize_project_filename(p.nome)}.xlsx"
     return send_file(temp.name, as_attachment=True, download_name=download_name)
-
 
 # =====================================================
 # WEBHOOK
