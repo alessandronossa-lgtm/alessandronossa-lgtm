@@ -934,26 +934,17 @@ def app_home():
 
     if request.method == "POST":
         nome = (request.form.get("nome") or "").strip()
-        prompt = (request.form.get("prompt") or "").strip()
 
         if not nome:
-            projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
-            return render_template("app.html", usuario=u, projetos=projetos, erro="Dê um nome ao projeto.")
+            return render_template("app.html", usuario=u)
 
-        p = Projeto(user_id=u.id, nome=nome, prompt=prompt)
+        p = Projeto(user_id=u.id, nome=nome, prompt="")
         db.session.add(p)
-
-        if not u.usou_gratis:
-            u.usou_gratis = True
-            u.gratis_expira_em = now_utc() + timedelta(hours=1)
-
         db.session.commit()
+
         return redirect(url_for("projeto_view", projeto_id=p.id))
 
-    projetos = Projeto.query.filter_by(user_id=u.id).order_by(Projeto.created_at.desc()).all()
-    return render_template("app.html", usuario=u, projetos=projetos)
-
-
+    return render_template("app.html", usuario=u)
 @app.route("/projeto/<int:projeto_id>")
 @login_required
 def projeto_view(projeto_id):
