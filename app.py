@@ -1193,13 +1193,13 @@ if not u.premium_ativo():
 
     acesso_pago_ativo = acesso and acesso.expires_at > now_utc()
 
-    if not u.usou_gratis:
+if not u.usou_gratis:
         u.usou_gratis = True
         u.gratis_expira_em = now_utc() + timedelta(hours=1)
         db.session.commit()
 
-    elif not acesso_pago_ativo:
-        return redirect(url_for("projeto_view", projeto_id=p.id))
+elif not acesso_pago_ativo:
+ return redirect(url_for("projeto_view", projeto_id=p.id))
     
     wb = generate_workbook_from_prompt(p.nome, p.prompt or "")
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
