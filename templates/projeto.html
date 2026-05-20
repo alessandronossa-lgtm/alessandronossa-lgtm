@@ -166,7 +166,7 @@
         <div class="free">
           🎁 Sua primeira planilha é grátis. O prazo de 1 hora começa quando você gerar o Excel.
         </div>
-      {% elif premium or acesso_ativo %}
+      {% if premium or acesso_ativo or not usuario.usou_gratis %}
         <div class="free">
           ✅ Acesso liberado. Você já pode gerar e baixar esta planilha.
         </div>
