@@ -1,3 +1,4 @@
+import io
 import os
 import re
 import json
@@ -1202,16 +1203,18 @@ def download_projeto(projeto_id):
 
     wb = generate_workbook_from_prompt(p.nome, p.prompt or "")
 
-    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-    wb.save(temp.name)
+    output = io.BytesIO()
+wb.save(output)
+output.seek(0)
 
-    download_name = f"{sanitize_project_filename(p.nome)}.xlsx"
+download_name = f"{sanitize_project_filename(p.nome)}.xlsx"
 
-    return send_file(
-        temp.name,
-        as_attachment=True,
-        download_name=download_name
-    )
+return send_file(
+    output,
+    as_attachment=True,
+    download_name=download_name,
+    mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
 # =====================================================
 # WEBHOOK
 # =====================================================
