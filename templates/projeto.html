@@ -34,7 +34,6 @@
     .top {
       display: flex;
       justify-content: space-between;
-      gap: 14px;
       align-items: center;
       margin-bottom: 26px;
     }
@@ -141,7 +140,6 @@
     @media (max-width: 700px) {
       .card { padding: 24px; border-radius: 22px; }
       h1 { font-size: 30px; }
-      .top { align-items: flex-start; }
     }
   </style>
 </head>
@@ -164,15 +162,15 @@
 
       {% if not usuario.usou_gratis %}
         <div class="free">
-          🎁 Sua primeira planilha é grátis. O prazo de 1 hora começa quando você gerar o Excel.
+          🎁 Esta primeira planilha é grátis. Depois dela, novos projetos custam apenas R$1.
         </div>
-      {% if premium or acesso_ativo or not usuario.usou_gratis %}
+      {% elif premium or acesso_ativo %}
         <div class="free">
           ✅ Acesso liberado. Você já pode gerar e baixar esta planilha.
         </div>
       {% else %}
         <div class="paid">
-          🔒 Para gerar novamente, libere este projeto por 24h por R$1.
+          🔒 Você já usou sua planilha grátis. Para novos projetos, libere por 24h por apenas R$1.
         </div>
       {% endif %}
 
@@ -208,4 +206,3 @@
   </div>
 </body>
 </html>
-{% endif %}
