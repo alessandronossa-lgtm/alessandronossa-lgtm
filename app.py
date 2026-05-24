@@ -1191,15 +1191,26 @@ def download_projeto(projeto_id):
             projeto_id=p.id
         ).order_by(AcessoProjeto.expires_at.desc()).first()
 
-        acesso_pago_ativo = acesso and acesso.expires_at > now_utc()
+        acesso_ativo = acesso and acesso.expires_at > now_utc()
 
-        if not u.usou_gratis:
-            u.usou_gratis = True
-            u.gratis_expira_em = now_utc() + timedelta(hours=1)
-            db.session.commit()
+        if not acesso_ativo:
+            if not u.usou_gratis:
+                expires = now_utc() + timedelta(hours=1)
 
-        elif not acesso_pago_ativo:
-            return redirect(url_for("projeto_view", projeto_id=p.id))
+                u.usou_gratis = True
+                u.gratis_expira_em = expires
+
+                acesso_gratis = AcessoProjeto(
+                    user_id=u.id,
+                    projeto_id=p.id,
+                    expires_at=expires,
+                    payment_id="GRATIS"
+                )
+
+                db.session.add(acesso_gratis)
+                db.session.commit()
+            else:
+                return redirect(url_for("projeto_view", projeto_id=p.id))
 
     wb = generate_workbook_from_prompt(p.nome, p.prompt or "")
 
@@ -1215,7 +1226,6 @@ def download_projeto(projeto_id):
         download_name=download_name,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
 # =====================================================
 # WEBHOOK
 # =====================================================
