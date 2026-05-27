@@ -199,7 +199,16 @@
           </form>
         {% endif %}
 
-        <a class="btn btn-secondary" href="/app">Criar outra planilha</a>
+  {% if usuario.usou_gratis %}
+  <form method="POST" action="/projeto/{{ projeto.id }}/comprar_diaria" target="_blank">
+    <button class="btn-secondary" type="submit">
+      Criar outra planilha por R$1
+    </button>
+  </form>
+{% else %}
+  <a class="btn btn-secondary" href="/app">Criar outra planilha</a>
+{% endif %}
+        
       </div>
 
     </main>
