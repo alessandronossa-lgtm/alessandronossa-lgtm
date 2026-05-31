@@ -556,6 +556,8 @@ def col_index(columns, target):
 def value_for_column(col_name: str, row_number: int):
     name = normalize_text(col_name)
 
+    if name in ("codigo", "código", "cod"):
+        return "001" if row_number == 6 else "002"
     if name == "data":
         return f"0{row_number}/04/2026"
     if name == "cliente":
