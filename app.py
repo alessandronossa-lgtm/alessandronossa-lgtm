@@ -489,7 +489,55 @@ def is_money_column(name: str) -> bool:
         "saldo", "custo", "total", "gasto", "comissao", "comissão"
     ]
     return any(k in n for k in keys)
+def should_total_column(name: str) -> bool:
+    n = normalize_text(name)
 
+    # Nunca somar essas colunas
+    bloqueadas = [
+        "preco unitario",
+        "preço unitário",
+        "valor unitario",
+        "valor unitário",
+        "preco",
+        "preço",
+        "codigo",
+        "código",
+        "cod",
+        "descricao",
+        "descrição",
+        "produto",
+        "cliente",
+        "nome",
+        "telefone",
+        "email",
+        "e-mail",
+        "status",
+        "observacao",
+        "observação",
+        "data"
+    ]
+
+    if n in bloqueadas:
+        return False
+
+    # Somar somente colunas que realmente fazem sentido
+    permitidas = [
+        "quantidade",
+        "qtd",
+        "valor total",
+        "total",
+        "entrada",
+        "saida",
+        "saída",
+        "saldo",
+        "estoque",
+        "gasto",
+        "custo",
+        "comissao",
+        "comissão"
+    ]
+
+    return n in permitidas
 
 def is_integer_column(name: str) -> bool:
     n = normalize_text(name)
@@ -674,18 +722,11 @@ def style_sheet(ws, columns, prompt, project_name):
             for row in range(6, 200):
                 ws.cell(row=row, column=idx).number_format = '0'
 
-    colunas_com_total = []
+   colunas_com_total = []
 
-    for idx, col in enumerate(columns, start=1):
-        n = normalize_text(col)
-
-        if any(k in n for k in [
-            "quantidade", "valor", "valor total",
-            "entrada", "saida", "saída",
-            "preco", "preço", "custo",
-            "saldo", "estoque", "gasto"
-        ]):
-            colunas_com_total.append((idx, col))
+for idx, col in enumerate(columns, start=1):
+    if should_total_column(col):
+        colunas_com_total.append((idx, col))
 
     if not detectar_sem_totais(prompt) and colunas_com_total:
         total_row = 8
