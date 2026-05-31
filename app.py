@@ -722,11 +722,11 @@ def style_sheet(ws, columns, prompt, project_name):
             for row in range(6, 200):
                 ws.cell(row=row, column=idx).number_format = '0'
 
-   colunas_com_total = []
+    colunas_com_total = []
 
-for idx, col in enumerate(columns, start=1):
-    if should_total_column(col):
-        colunas_com_total.append((idx, col))
+    for idx, col in enumerate(columns, start=1):
+        if should_total_column(col):
+            colunas_com_total.append((idx, col))
 
     if not detectar_sem_totais(prompt) and colunas_com_total:
         total_row = 8
