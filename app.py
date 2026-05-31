@@ -235,68 +235,65 @@ def clean_column_name(name: str) -> str:
     return name[:40]
 
 
-def normalizar_nome_coluna(name: str) -> str:
-    n = normalize_text(name)
+def normalizar_nome_coluna(name: str):
+    original = (name or "").strip()
+    n = normalize_text(original)
 
-    if "placa" in n:
-        return "Placa"
-    if "modelo" in n:
-        return "Modelo"
-    if n in ("km", "quilometragem") or "km " in n or " km" in n:
-        return "Km"
-    if "local" in n:
-        return "Local"
-    if "atividade" in n:
-        return "Atividade"
-    if "gasto" in n:
-        return "Gasto"
-    if "cliente" in n:
-        return "Cliente"
-    if "produto" in n:
-        return "Produto"
-    if "quantidade" in n or n == "qtd":
-        return "Quantidade"
-    if "preco unitario" in n or "preço unitário" in n:
-        return "Preço Unitário"
-    if "valor total" in n:
-        return "Valor Total"
-    if n == "data":
-        return "Data"
-    if "descricao" in n or "descrição" in n:
-        return "Descrição"
-    if "fornecedor" in n:
-        return "Fornecedor"
-    if "categoria" in n:
-        return "Categoria"
-    if "estoque minimo" in n or "estoque mínimo" in n:
-        return "Estoque Mínimo"
-    if "forma de pagamento" in n:
-        return "Forma de Pagamento"
-    if "status" in n:
-        return "Status"
-    if "entrada" in n:
-        return "Entrada"
-    if "saida" in n or "saída" in n:
-        return "Saída"
-    if "saldo" in n:
-        return "Saldo"
-    if "telefone" in n:
-        return "Telefone"
-    if "e-mail" in n or "email" in n:
-        return "E-mail"
-    if "cidade" in n:
-        return "Cidade"
-    if "cargo" in n:
-        return "Cargo"
-    if "nome" in n:
-        return "Nome"
-    if "observacao" in n or "observação" in n:
-        return "Observação"
-    if "data da revisao" in n or "data da revisão" in n:
-        return "Data Da Revisão"
+    mapa_exato = {
+        "data": "Data",
+        "nome": "Nome",
+        "cliente": "Cliente",
+        "produto": "Produto",
+        "descricao": "Descrição",
+        "descrição": "Descrição",
+        "descricao do produto": "Descrição do Produto",
+        "descrição do produto": "Descrição do Produto",
+        "codigo": "Código",
+        "código": "Código",
+        "cod": "Código",
+        "qtd": "Quantidade",
+        "quantidade": "Quantidade",
+        "preco": "Preço",
+        "preço": "Preço",
+        "preco unitario": "Preço Unitário",
+        "preço unitário": "Preço Unitário",
+        "valor unitario": "Valor Unitário",
+        "valor unitário": "Valor Unitário",
+        "valor total": "Valor Total",
+        "total": "Total",
+        "comissao": "Comissão",
+        "comissão": "Comissão",
+        "telefone": "Telefone",
+        "email": "E-mail",
+        "e-mail": "E-mail",
+        "cidade": "Cidade",
+        "status": "Status",
+        "observacao": "Observação",
+        "observação": "Observação",
+        "fornecedor": "Fornecedor",
+        "categoria": "Categoria",
+        "entrada": "Entrada",
+        "saida": "Saída",
+        "saída": "Saída",
+        "saldo": "Saldo",
+        "placa": "Placa",
+        "modelo": "Modelo",
+        "km": "Km",
+        "quilometragem": "Km",
+        "local": "Local",
+        "atividade": "Atividade",
+        "gasto": "Gasto",
+        "forma de pagamento": "Forma de Pagamento",
+        "estoque minimo": "Estoque Mínimo",
+        "estoque mínimo": "Estoque Mínimo",
+        "data da revisao": "Data da Revisão",
+        "data da revisão": "Data da Revisão",
+    }
 
-    return name.strip().title()
+    if n in mapa_exato:
+        return mapa_exato[n]
 
+    return original.title()
 
 def unique_columns(columns):
     seen = set()
