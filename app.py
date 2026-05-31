@@ -452,24 +452,15 @@ def infer_columns_from_prompt(prompt: str):
 
 def detect_columns(prompt: str):
     explicit = extract_explicit_columns(prompt)
+
     if explicit:
         cols = explicit
     else:
-        inteligentes = extrair_colunas(prompt)
-        if inteligentes:
-            cols = inteligentes
-        else:
-            cols = infer_columns_from_prompt(prompt)
+        cols = infer_columns_from_prompt(prompt)
 
-    # 👇 NOVO BLOCO PRO
-    if "comissao" in normalize_text(prompt):
-        if "Comissão" not in cols:
-            cols.append("Comissão")
+    cols = unique_columns(cols)
 
     return cols
-
-
-
 
 
 def is_money_column(name: str) -> bool:
