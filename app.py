@@ -337,11 +337,33 @@ def detectar_sem_totais(prompt: str) -> bool:
 
 def split_candidate_columns(text: str):
     text = (text or "").replace("\n", ", ")
-    text = re.sub(r"\s+e\s+", ", ", text, flags=re.IGNORECASE)
-    text = text.replace(";", ",").replace("|", ",")
-    parts = [clean_column_name(p) for p in text.split(",")]
-    return [p for p in parts if p]
 
+    text = text.replace(";", ",").replace("|", ",")
+
+    # troca " e " por vírgula somente quando parecer lista de colunas
+    text = re.sub(r"\s+e\s+", ", ", text, flags=re.IGNORECASE)
+
+    parts = [clean_column_name(p) for p in text.split(",")]
+
+    final = []
+    palavras_proibidas = [
+        "cabeçalho", "cabecalho", "vermelho", "azul", "verde",
+        "preto", "cinza", "largura", "larguras", "fonte",
+        "titulo", "título"
+    ]
+
+    for p in parts:
+        p_limpo = p.strip()
+
+        if not p_limpo:
+            continue
+
+        if any(b in normalize_text(p_limpo) for b in palavras_proibidas):
+            continue
+
+        final.append(p_limpo)
+
+    return final
 
 def extract_column_widths(prompt: str):
     widths = {}
